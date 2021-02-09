@@ -49,20 +49,10 @@ logLR <- binom + norm
 resultvec <- c(-2*binom,  pchisq(-2*binom, length(data) - 1 , lower.tail=FALSE),
                norm,  pf(norm, length(data) - 1,Reduce("+",data_size), lower.tail=FALSE),
                -2*logLR, pchisq(-2*logLR,length(data) , lower.tail=FALSE))
-result <- matrix(resultvec, nrow=3, ncol=2, dimnames=list(metric=c('lrstat', 'p.value'), component=c('binom', 'norm', 'comb')))
+result <- matrix(resultvec, nrow=2, ncol=3, dimnames=list(metric=c('lrstat', 'p.value'), component=c('binom', 'norm', 'comb')))
 return(result)
 
 logProd <- function(prod, logand){
   ifelse(prod==0, 0, prod*log(logand))
 }
-
-  
-  
-  
-  
-  
-  
-  
-  
-  
 }
