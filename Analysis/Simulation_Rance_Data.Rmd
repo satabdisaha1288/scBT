@@ -81,6 +81,38 @@ for(i in 1: nlevels(dose_level))
 simulated.gene.metadata<-as.data.frame(simulated.gene.metadata[-which(b==TRUE),])
 ```
 
+Create data for applying LRT_multiple_groups
+```{r}
+data_short<-rep(list(data.frame()),length(data))
+data_ind<-lapply(data, function(x) ifelse(x>0,1,0))
+#data_ind_short<-lapply(data_ind, function(x) x[x!=0])
+data_short<-lapply(data, function(x) apply(x,1,function(x) x[x!=0]))
+gene_names<-vector()
+for(j in 1:nrow(data[["0"]]))
+{
+  gene_names[j]<-sprintf("gene%i",j)
+}
+out<-rep(list(list()),times=nrow(data[["0"]]))
+for(j in 1:nrow(data[["0"]]))
+{
+    xx<-noquote(sprintf("gene%i",j))
+    l1<-list(data_short[["0"]][j][[xx]],
+             data_short[["0.01"]][j][[xx]],data_short[["0.03"]][j][[xx]],
+                      data_short[["0.1"]][j][[xx]],
+                      data_short[["0.3"]][j][[xx]],data_short[["1"]][j][[xx]],
+                          data_short[["3"]][j][[xx]],data_short[["10"]][j][[xx]],
+                                  data_short[["30"]][j][[xx]])
+    l2<-list(data_ind[["0"]][j,],data_ind[["0.01"]][j,],
+                                  data_ind[["0.03"]][j,],data_ind[["0.1"]][j,],
+                                  data_ind[["0.3"]][j,],data_ind[["1"]][j,],
+                                  data_ind[["3"]][j,],data_ind[["10"]][j,],
+                                  data_ind[["30"]][j,])
+    out[[j]]<-LRT_multiple_groups(l1,l2)
+    
+}
+
+```
+
 Prior selection under alternative hypothesis
 
 ```{r}
@@ -112,7 +144,7 @@ a_sigma = 6
 a_w = a_t_w = 8 #t refers to the treatment groups
 b_w = b_t_w = 2
 #length(which(simulated.gene.metadata$Category == "Positive"))
-prior_Alter<-c(1-((0.25)^(1/569)),0.01,0.05,0.1)
+prior_Alter<-c(1-((0.78)^(1/1800)),0.01,0.05,0.1, 0.2,0.3,0.4,0.5)
 prior_Null<- 1-prior_Alter
 ```
 
@@ -157,11 +189,11 @@ source('~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/R/BayesFac
                            Y_7=as.matrix(data[["3"]][j,]),
                            Y_8=as.matrix(data[["10"]][j,]),
                            Y_9=as.matrix(data[["30"]][j,])),
-                           m_0=2.22723,m=m,K=9,
+                           m_0=mean(m),m=m,K=9,
                            tau_k_mu =tau_k_mu,tau_mu=tau_mu[2], 
                            b_sigma=1,a_sigma=6,a_w=8,b_w=2,
-                           prior_alt = prior_Alter[1],
-                           prior_null = prior_Null[1])
+                           prior_alt =prior_Alter[8],
+                           prior_null = prior_Null[8])
   }
 
 ```
@@ -182,7 +214,7 @@ for (j in 1: length(bf_multiple_01))
 }
 Decision_bf_multiple_01_new<-
     factor(Decision_bf_multiple_01_new,levels = c("Positive","Negative"))
-True_decision<-ifelse(simulated.gene.metadata$Direction == "Upregulated" | simulated.gene.metadata$Direction == "Downregulated","Positive","Negative")
+True_decision<-ifelse(simulated.gene.metadata$Direction=="Downregulated" | simulated.gene.metadata$Direction == "Upregulated","Positive","Negative")
 True_decision<-factor(True_decision, levels = c("Positive","Negative"))
 c<-data.frame(exp_bf_multiple_01,Decision_bf_multiple_01_new,
                      True_decision)
@@ -276,25 +308,6 @@ cf <- data.frame(dose,type,value)
 ```
 
 ```{r}
-ggplot(cf, aes(fill=type, y=value, x=as.factor(dose))) + 
-  geom_text(aes(label=value), position = position_dodge(width=1),
-            size=3,vjust = -0.5)+ geom_bar(position="dodge", stat="identity")+ 
-            xlab("Dose")+ ylab("Confusion Matrix Values")+
-             ggtitle("tau_mu = 1, P(H_a)= 0.002")+ 
-              theme(plot.title = element_text(color="red", size=10, face="bold.italic"))
-```
-```{r}
-#Investigate what genes are DE in 0.03 but not DE in 0.1
-which(c[["0.01"]]$`Pred Decision`=="Positive")
-which(c[["0.03"]]$`Pred Decision`=="Positive")
-which(c[["0.1"]]$`Pred Decision`=="Positive")
 
-a<-which(c[["3"]]$`Pred Decision`=="Positive")
-b<-which(c[["10"]]$`Pred Decision`=="Positive")
-c<-which(c[["30"]]$`Pred Decision`=="Positive")
-d<-intersect(a,b)
-intersect(d,c)
-j1<-intersect(a,c)
-length(setdiff(j1,b))
 ```
 
