@@ -116,7 +116,7 @@ simPower = function(doses, mean.range, fc.range = c(1.3, 5), downregulated = FAL
   fc = fc.range[2] * 2
   
   while (max(resp) > max(mean.range) | min(resp) < min(mean.range) | fc < fc.range[1] | fc > fc.range[2]){
-    gamma = runif(1, mean.range[1], mean.range[2])
+    gamma = sample(mean.range, 1)
     if (downregulated){
       beta = runif(1, -1, 0)
     } else {
@@ -207,7 +207,7 @@ runSimulation = function(n = 50, start_id = 1, class = 'Hill', realData = NULL, 
   return(list(data = df, parameters = data.table::rbindlist(par, fill = TRUE), stop_id = i))
 }
 
-convert2snseq = function(reference, modeledData, ncells, sd.scale = 1, p.zero = 2){
+convert2snseq = function(reference, modeledData, ncells, sd.scale = 1, p.zero = 2, by.doses = FALSE){
   #' 
   #' 
   #' @param reference = realData
@@ -219,13 +219,13 @@ convert2snseq = function(reference, modeledData, ncells, sd.scale = 1, p.zero = 
   diff.table = vapply(modeledData$resp, function(x) x - reference$mean, numeric(length(reference$mean)))
   indx = apply(abs(diff.table), 2, which.min)
   out = cbind(modeledData, reference[indx, ])
-  out = out[, c('item','doses','resp','mean', 'sd','percent.zero')]
+  out = out[, c('item','doses','resp','mean', 'sd','percent_zero')]
   out$resp = as.numeric(out$resp)
   out$sd = as.numeric(out$sd) * sd.scale
   if (p.zero > 1){
-    out$percent.zero = as.numeric(out$percent.zero)
+    out$percent_zero = as.numeric(out$percent_zero)
   } else {
-    out$percent.zero = p.zero
+    out$percent_zero = p.zero
   }
   
   modNorm = t(apply(out, 1, function(x) adjustSampling(as.numeric(x[3]), as.numeric(x[5]), as.numeric(x[6]), ncells)))  
@@ -288,7 +288,7 @@ fitStats = function(expression, name) {
 }
 
 
-realParams = function(dataset, ncores, assay = 'Norm', metacol = NULL, metacriteria = '') {
+realParams = function(dataset, ncores, assay = 'Norm', metacol = NULL, metacriteria = '', funpath = './simulation_functions.R') {
   print(paste('Working on dataset ', metacriteria, sep = ''))
   if (!is.null(metacol)){
     dataset$norm = dataset$norm[, which(dataset$meta[metacol] == metacriteria)]
@@ -300,14 +300,14 @@ realParams = function(dataset, ncores, assay = 'Norm', metacol = NULL, metacrite
   
   if (assay == 'Norm'){
     tab = foreach(i = 1:NROW(dataset$norm), .packages = c("Seurat","dplyr", "fitdistrplus")) %dopar% {
-      source('C:\\Users\\15177\\OneDrive - Michigan State University\\Documents\\Projects\\Prj161-snSeq-Mm_TCDD_DR_Sept2019\\SimulateDR\\simulateModels2.R')
+      source(funpath)
       fitStats(dataset$norm[i,], rownames(dataset$norm)[i])
     }
   }
   
   if (assay == 'SCT'){
     tab = foreach(i = 1:NROW(dataset$sct), .packages = c("Seurat","dplyr", "fitdistrplus")) %dopar% {
-      source('C:\\Users\\15177\\OneDrive - Michigan State University\\Documents\\Projects\\Prj161-snSeq-Mm_TCDD_DR_Sept2019\\SimulateDR\\simulateModels2.R')
+      source(funpath)
       fitStats(dataset$sct[i,], rownames(dataset$sct)[i])
     }
   }
@@ -317,6 +317,29 @@ realParams = function(dataset, ncores, assay = 'Norm', metacol = NULL, metacrite
   ans$mean = suppressWarnings(as.numeric(ans$mean))
   ans$percent_zero = suppressWarnings(as.numeric(ans$percent_zero))
   ans$ks = suppressWarnings(as.numeric(ans$ks))
+  ans$mean_nonzero = as.numeric(ans$mean_nonzero)
+  ans$mean_real = as.numeric(ans$mean_real)
+  ans$var_nonzero = as.numeric(ans$var_nonzero)
+  ans$var_real = as.numeric(ans$var_real)
+  ans$sd = as.numeric(ans$sd)
   ans$meta_var = metacriteria
   return(ans)
+}
+
+reformatForExport = function(simData, GeneMeta){
+  tempData = simData$out2[order(simData$out2$doses),]
+  tempData$barcode = paste(tempData$variable, tempData$doses, sep = '_')
+  simCellMeta = unique(tempData[,c('barcode', 'doses')])
+  rownames(simCellMeta) = simCellMeta$barcode
+  colnames(simCellMeta) = c('barcode', 'Dose')
+  tempData = tempData[,c('item', 'barcode', 'value')]
+  tempData = reshape2::dcast(tempData, item ~ barcode)
+  rownames(tempData) = paste('gene', tempData$item, sep = '')
+  tempData = tempData[,-1]
+  simDataFinal = tempData[,simCellMeta$barcode]
+  
+  SimGeneMeta = data.frame(Gene = rownames(simDataFinal))
+  SimGeneMeta = cbind(SimGeneMeta, GeneMeta)
+  
+  return(list(norm = simDataFinal, meta = simCellMeta, geneMeta = SimGeneMeta))
 }
