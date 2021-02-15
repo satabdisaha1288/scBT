@@ -22,27 +22,9 @@ memory.limit(size = 64000)
 The following Seurat object was subset from a dose-response experiment using mice described here _(TODO: add link)_
 Cell type cluster 1 is used as an example. 
 ```{r}
-import = importSeu('C:\\Users\\15177\\Downloads\\HPC-TempDownload\\FULL-TEMPORARY\\clust3.RData')
-allReal = readRDS('C.RData')
-realData = allReal %>% filter(category == 'pass') %>% filter(Cells == 7)
-```
-
-### Estimate parameters
-Parameters will be estimated for each dose group independently and then combined into a single data frame.
-_This can be slow depending on the number of cores used_
-```{r}
-realData = rbind(
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0, funpath = source_path),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0.01, funpath = source_path),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0.03, funpath = source_path),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0.1, funpath = source_path),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0.3, funpath = source_path),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 1, funpath = source_path),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 3, funpath = source_path),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 10, funpath = source_path),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 30, funpath = source_path)
-)
-realData = realData %>% filter(category == 'pass') #Genes that are all zero's or could not be modeled are given the "fail" flag
+RealParamsFull = readRDS('EstimatedParameters.RData')
+realData = RealParamsFull %>% filter(category == 'pass') %>% filter(Cells == 7)
+rm(RealParamsFull)
 ```
 
 #### Visualization of estimated parameters
@@ -61,7 +43,6 @@ P3 = ggplot(data = realData %>% filter(category == 'pass') , aes(x = mean, y = m
   geom_point() +
   ggtitle('Correlation of estimated mean and mean expression') +
   theme_classic()
-
 
 P4 = ggplot(data = realData %>% filter(category == 'pass') , aes(x = percent_zero, y = var_real, colour = factor(meta_var))) +
   geom_point() +
@@ -149,8 +130,6 @@ ggplot(data = reshape2::melt(exp2.down$parameters), aes(x = value)) +
   geom_density() +
   theme_bw()
 ```
-
-
 
 #### Exponential3
   response = a * (c - (c - 1) * exp( -1 * (b * doses)^d ))
