@@ -2,6 +2,7 @@
 #Y : list of size K of n times p matrices of observed data having n cells and p genes in K treatment dose groups 
 #in the treatment group
 #K is the number of groups
+#m is the vector of group means
 Bayes_factor_multiple<-function(Y,m,m_0,tau_k_mu,K,
                        tau_mu, b_sigma,a_sigma,a_w,
                        b_w,prior_alt,prior_null)
@@ -61,7 +62,7 @@ Bayes_factor_multiple<-function(Y,m,m_0,tau_k_mu,K,
     # l_D5[j]<- (K-1)*0.5* (log(a_w - 1) + log(b_w - 1) - log(a_w + b_w - 1)) +
     #   ((a_w - 1)*(K-1)*log(a_w - 1)) + ((b_w - 1)*(K-1) * log(b_w - 1)) -
     #   ((a_w + b_w - 1)*(K-1)*log(a_w + b_w - 1))
-    l_D5[j]<= (K-1)* lbeta(a_w,b_w)
+    l_D5[j]<- (K-1)* lbeta(a_w,b_w)
     l_likelihood<-  l_D0[j] + l_D1[j] + l_D2[j] + l_D3[j] + l_D4[j] +
       l_D5[j]
     l_prior_odds<- log (prior_alt) - log(prior_null)
