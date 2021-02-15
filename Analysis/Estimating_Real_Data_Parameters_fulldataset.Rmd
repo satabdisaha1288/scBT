@@ -59,15 +59,15 @@ plotDataSummary = function(realData){
 import = importSeu('C:\\Users\\15177\\Downloads\\HPC-TempDownload\\FULL-TEMPORARY\\clust1.RData')
 
 c1 = rbind(
-  realParams(import, 6, metacol = 'Dose', metacriteria = 0),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 0.01),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 0.03),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 0.1),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 0.3),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 1),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 3),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 10),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 30)
+  realParams(import, 6, metacol = 'Dose', metacriteria = 0, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 0.01, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 0.03, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 0.1, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 0.3, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 1, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 3, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 10, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 30, funpath = source_path)
 )
 
 plotDataSummary(c1)
@@ -77,15 +77,15 @@ plotDataSummary(c1)
 import = importSeu('C:\\Users\\15177\\Downloads\\HPC-TempDownload\\FULL-TEMPORARY\\clust2.RData')
 
 c2 = rbind(
-  realParams(import, 6, metacol = 'Dose', metacriteria = 0),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 0.01),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 0.03),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 0.1),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 0.3),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 1),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 3),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 10),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 30)
+  realParams(import, 6, metacol = 'Dose', metacriteria = 0, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 0.01, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 0.03, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 0.1, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 0.3, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 1, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 3, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 10, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 30, funpath = source_path)
 )
 
 plotDataSummary(c2)
@@ -95,15 +95,15 @@ plotDataSummary(c2)
 import = importSeu('C:\\Users\\15177\\Downloads\\HPC-TempDownload\\FULL-TEMPORARY\\clust3.RData')
 
 c3 = rbind(
-  realParams(import, 6, metacol = 'Dose', metacriteria = 0),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 0.01),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 0.03),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 0.1),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 0.3),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 1),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 3),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 10),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 30)
+  realParams(import, 6, metacol = 'Dose', metacriteria = 0, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 0.01, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 0.03, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 0.1, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 0.3, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 1, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 3, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 10, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 30, funpath = source_path)
 )
 
 plotDataSummary(c3)
@@ -113,15 +113,15 @@ plotDataSummary(c3)
 import = importSeu('C:\\Users\\15177\\Downloads\\HPC-TempDownload\\FULL-TEMPORARY\\clust4.RData')
 
 c4 = rbind(
-  realParams(import, 6, metacol = 'Dose', metacriteria = 0),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 0.01),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 0.03),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 0.1),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 0.3),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 1),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 3),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 10),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 30)
+  realParams(import, 6, metacol = 'Dose', metacriteria = 0, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 0.01, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 0.03, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 0.1, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 0.3, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 1, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 3, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 10, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 30, funpath = source_path)
 )
 
 plotDataSummary(c4)
@@ -132,15 +132,15 @@ plotDataSummary(c4)
 import = importSeu('C:\\Users\\15177\\Downloads\\HPC-TempDownload\\FULL-TEMPORARY\\clust5.RData')
 
 c5 = rbind(
-  realParams(import, 6, metacol = 'Dose', metacriteria = 0),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 0.01),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 0.03),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 0.1),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 0.3),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 1),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 3),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 10),
-  realParams(import, 6, metacol = 'Dose', metacriteria = 30)
+  realParams(import, 6, metacol = 'Dose', metacriteria = 0, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 0.01, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 0.03, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 0.1, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 0.3, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 1, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 3, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 10, funpath = source_path),
+  realParams(import, 6, metacol = 'Dose', metacriteria = 30, funpath = source_path)
 )
 
 plotDataSummary(c5)
@@ -150,15 +150,15 @@ plotDataSummary(c5)
 import = importSeu('C:\\Users\\15177\\Downloads\\HPC-TempDownload\\FULL-TEMPORARY\\clust6.RData')
 
 c6 = rbind(
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0.01),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0.03),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0.1),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0.3),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 1),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 3),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 10),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 30)
+  realParams(import, 4, metacol = 'Dose', metacriteria = 0, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 0.01, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 0.03, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 0.1, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 0.3, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 1, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 3, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 10, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 30, funpath = source_path)
 )
 
 plotDataSummary(c6)
@@ -168,15 +168,15 @@ plotDataSummary(c6)
 import = importSeu('C:\\Users\\15177\\Downloads\\HPC-TempDownload\\FULL-TEMPORARY\\clust7.RData')
 
 c7 = rbind(
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0.01),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0.03),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0.1),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0.3),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 1),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 3),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 10),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 30)
+  realParams(import, 4, metacol = 'Dose', metacriteria = 0, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 0.01, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 0.03, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 0.1, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 0.3, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 1, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 3, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 10, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 30, funpath = source_path)
 )
 
 plotDataSummary(c7)
@@ -186,15 +186,15 @@ plotDataSummary(c7)
 import = importSeu('C:\\Users\\15177\\Downloads\\HPC-TempDownload\\FULL-TEMPORARY\\clust8.RData')
 
 c8 = rbind(
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0.01),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0.03),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0.1),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0.3),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 1),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 3),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 10),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 30)
+  realParams(import, 4, metacol = 'Dose', metacriteria = 0, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 0.01, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 0.03, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 0.1, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 0.3, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 1, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 3, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 10, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 30, funpath = source_path)
 )
 
 plotDataSummary(c8)
@@ -204,15 +204,15 @@ plotDataSummary(c8)
 import = importSeu('C:\\Users\\15177\\Downloads\\HPC-TempDownload\\FULL-TEMPORARY\\clust9.RData')
 
 c9 = rbind(
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0.01),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0.03),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0.1),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0.3),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 1),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 3),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 10),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 30)
+  realParams(import, 4, metacol = 'Dose', metacriteria = 0, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 0.01, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 0.03, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 0.1, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 0.3, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 1, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 3, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 10, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 30, funpath = source_path)
 )
 
 plotDataSummary(c9)
@@ -223,15 +223,15 @@ plotDataSummary(c9)
 import = importSeu('C:\\Users\\15177\\Downloads\\HPC-TempDownload\\FULL-TEMPORARY\\clust10.RData')
 
 c10 = rbind(
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0.01),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0.03),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0.1),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 0.3),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 1),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 3),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 10),
-  realParams(import, 4, metacol = 'Dose', metacriteria = 30)
+  realParams(import, 4, metacol = 'Dose', metacriteria = 0, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 0.01, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 0.03, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 0.1, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 0.3, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 1, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 3, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 10, funpath = source_path),
+  realParams(import, 4, metacol = 'Dose', metacriteria = 30, funpath = source_path)
 )
 
 plotDataSummary(c10)

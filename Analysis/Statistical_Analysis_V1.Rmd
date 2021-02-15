@@ -1,0 +1,94 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+## Setting up the environment and displaying session information for reproducibility
+```{r}
+library(Seurat, quietly = TRUE)
+library(ggplot2, quietly = TRUE)
+library(dplyr, quietly = TRUE)
+library(doParallel, quietly = TRUE)
+library(tidyverse, quietly = TRUE)
+library(matrixStats, quietly = TRUE)
+source_path = 'C:\\Users\\15177\\OneDrive - Michigan State University\\Documents\\Projects\\Prj161-snSeq-Mm_TCDD_DR_Sept2019\\snSeq-DGE\\R\\simulation_functions.R'
+source('../R/dose_response_models.R') #TODO: CHANGE TO RELATIVE PATH
+source("../R/Bayes_factor.R")
+sessionInfo()
+memory.limit(size = 64000)
+```
+
+## Import the single-cell expression dataset along with the cell and gene metadata. The following is a simulated dataset
+```{r}
+simImport = readRDS('simData.RData')
+dose_levels = factor(simImport$meta$Dose)
+```
+
+## Separate the individual dose groups and estimate sigma and omega parameters
+* sigma is the nonzero portion of the data.
+* omega is the zero portion of the data.
+```{r}
+data2 = list()
+p.zero = data.frame(gene = rownames(simImport$geneMeta))
+mean.nonzero = data.frame(gene = rownames(simImport$geneMeta))
+sigma = data.frame(gene = rownames(simImport$geneMeta))
+omega = data.frame(gene = rownames(simImport$geneMeta))
+
+for (d in levels(dose_levels)){
+  dose = paste('Dose', d, sep = '_')
+  data2[[dose]] = as.matrix(simImport$norm[,which(simImport$meta$Dose == d)])
+  p.zero[,dose] = apply(data2[[dose]], 1, function(x) length(which(x > 0))/length(x))
+  mean.nonzero[,dose] = apply(data2[[dose]], 1, function(x) mean(x[which(x > 0)]))
+  sigma[,dose] = apply(data2[[dose]], 1, function(x) var(x[which(x > 0)]))
+  omega[,dose] = apply(data2[[dose]], 1, function(x) length(which(x == 0))/length(x))
+}
+```
+
+## Summarize the parameters
+```{r}
+p.zero.means = colMeans(p.zero[,2:10])
+mean.nonzero.means = colMeans(mean.nonzero[,2:10])
+sigma.means = colMeans(sigma[,2:10])
+omega.means = colMeans(omega[,2:10])
+
+p.zero.vars  = colVars(as.matrix(p.zero[,2:10]))
+mean.nonzero.vars = colVars(as.matrix(mean.nonzero[,2:10]))
+sigma.vars = colVars(as.matrix(sigma[,2:10]))
+omega.vars = colVars(as.matrix(omega[,2:10]))
+```
+
+## __Not sure what is happening here__
+```{r}
+m_0=mean(mean.nonzero.means)
+tau_t_mu = tau_c_mu = tau_mu = c(0.5,1,2,3)
+#Use sigma_mean and sigma_var to solve for b_sigma and a_sigma
+b_sigma = 1
+a_sigma = 6
+#Use mean and variance of omega to solve for a_w and b_w
+a_w = a_c_w = a_t_w = 8
+b_w = b_c_w = b_t_w = 2
+prior_Alter<-c(1-((0.83)^(1/200)),0.01,0.05,0.1)
+prior_Null<- 1-prior_Alter
+```
+
+#actual bayes factor computed in overleaf
+##BF FDR control using jeffreys 
+m_t0, m_c0 missing..
+```{r}
+a<-rep(list(list()),nrow(data2[[1]]))
+bf_actual_01<-rep(list(a), nlevels(dose_level)-1)
+names(bf_actual_01)<-levels(dose_level)[-1]
+
+for (i in levels(dose_level)[-1])
+{
+  for(j in 1:nrow(data2[[1]]))
+  {
+    bf_actual_01[[i]][[j]]<-Bayes_factor(Y_t=as.matrix(data2[[i]][j,]),
+                           Y_c=as.matrix(data2[[1]][j,]),m_t0,m_c0,m_0,
+                           tau_t_mu,tau_c_mu, tau_mu=tau_mu[3], 
+                           b_sigma,a_sigma,a_w,a_c_w,a_t_w,b_w,b_t_w,b_c_w,
+                           prior_alt = prior_Alter[4],
+                           prior_null = prior_Null[4])
+  }
+}
+```
