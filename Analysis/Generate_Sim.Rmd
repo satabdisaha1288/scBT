@@ -2,8 +2,7 @@
 title: "R Notebook"
 output: html_notebook
 ---
-
-Identify highly variable genes
+Select 100 genes from the real data for estimating parameters, required for generating simulations.
 
 ```{r}
 normalized_clust1_full <- read.delim("~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/SampleData/normalized_clust1_full.txt", header=TRUE)
