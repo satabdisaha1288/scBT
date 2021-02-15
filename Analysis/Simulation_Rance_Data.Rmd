@@ -56,30 +56,13 @@ data[[i]]<-t(data[[i]])
 
 ```{r}
 # Identify the genes expressed in less than 5% of the cells over all the dose groups
-a<-matrix(data=NA, nrow = nlevels(dose_level),ncol=nrow(data[["0"]]), byrow=TRUE)
-rownames(a)<-levels(dose_level)
-for(i in levels(dose_level))
-{
- for(j in 1:nrow(data[["0"]]))
- {
-   a[i,j]<-length(which(data[[i]][j,] != 0))/ncol(data[[i]])
- }
-}
-b<-vector(mode = "logical", length = nrow(data[["0"]]))
-for( i in 1: nrow(data[["0"]]))
-{
-  b[i]<-all(a[,i] < 0.05)
-}
+propor<-sapply(data,function(x) apply(x,1,function(x) length(which(x!=0))/length(x)))
+b<-which(apply(propor,1,function(x) all(x>0.05))== TRUE)
+#Filter out genes
+data<-lapply(data,function(x) apply(x,2,function(x) x[b]))
+simulated.gene.metadata<-as.data.frame(simulated.gene.metadata[b,])
 ```
 
-```{r}
-#Filter out genes
-for(i in 1: nlevels(dose_level))
-{
-  data[[i]]<-data[[i]][which(b == FALSE),]
-}
-simulated.gene.metadata<-as.data.frame(simulated.gene.metadata[-which(b==TRUE),])
-```
 
 Create data for applying LRT_multiple_groups
 ```{r}
@@ -113,6 +96,7 @@ for(j in 1:nrow(data[["0"]]))
 
 ```
 
+
 Prior selection under alternative hypothesis
 
 ```{r}
@@ -141,8 +125,8 @@ b_sigma = 1
 a_sigma = 6
 #Use mean and variance of omega to solve for a_w and b_w
 #We keep the same values of a_w and b_w for all groups since the omega mean and omega SD values are more or less consistent.
-a_w = a_t_w = 8 #t refers to the treatment groups
-b_w = b_t_w = 2
+a_w = a_t_w = 0.8 #t refers to the treatment groups
+b_w = b_t_w = 0.2
 #length(which(simulated.gene.metadata$Category == "Positive"))
 prior_Alter<-c(1-((0.78)^(1/1800)),0.01,0.05,0.1, 0.2,0.3,0.4,0.5)
 prior_Null<- 1-prior_Alter
