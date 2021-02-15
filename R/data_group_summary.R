@@ -13,7 +13,8 @@ data_group_summary<-function(data){
       summarise(
         count = n(),
         mean = mean(value, na.rm = TRUE),
-        sd = sd(value, na.rm = TRUE)
+        sd = sd(value, na.rm = TRUE),
+        drop_prop = length(which(value == 0))/ length(value),
       )
   }
   return(my_data_summary)
