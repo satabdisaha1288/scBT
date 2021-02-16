@@ -102,10 +102,13 @@ ols.fit<-rep(list(rep(list(list()),nrow(data_small[["0"]]))),nlevels(dose_level)
 #Parameters
 #prob_success_group is the 1-dropout probability of each group
 prob_success_group<-rep(list(vector("numeric",length = nrow(data_small[["0"]]) )),nlevels(dose_level))
+names(prob_success_group)<-levels(dose_level)
 #mean_exp_group is the mean gene expression for each group
 mean_exp_group<-rep(list(list()),nlevels(dose_level))
+names(mean_exp_group)<-levels(dose_level)
 #sd_exp_group is the sd of the gene expression for each group
 sd_exp_group<-rep(list(list()),nlevels(dose_level))
+names(sd_exp_group)<-levels(dose_level)
 for(k in levels(dose_level))
 {
   for(i in rownames(data_small[["0"]]))
@@ -235,10 +238,10 @@ my_data_kruskal_p_value<-rep(list(vector()),length(y.norm))
 my_data_anova_p_value<-rep(list(vector()),length(y.norm))
 for(j in 1:length(y.norm))
 {
-  mydata[[j]]<-data.frame(t(data.frame(y.norm[[j]][[1]],y.norm[[j]][[2]],
-                   y.norm[[j]][[3]],y.norm[[j]][[4]],y.norm[[j]][[5]],
-                   y.norm[[j]][[6]],y.norm[[j]][[7]],y.norm[[j]][[8]],
-                                               y.norm[[j]][[9]])),
+  mydata[[j]]<-data.frame(t(data.frame(y.norm[[j]][["0"]],
+              y.norm[[j]][["0.01"]],y.norm[[j]][["0.03"]],                                 y.norm[[j]][["0.1"]],y.norm[[j]][[5]],
+                   y.norm[[j]][["0.3"]],y.norm[[j]][["1"]],
+          y.norm[[j]][["3"]],y.norm[[j]][["10"]],y.norm[[j]][["30"]])),
                      c(rep(0,1000),rep(0.01,1000),rep(0.03,1000),
                        rep(0.1,1000),rep(0.3,1000),rep(1,1000),
                        rep(3,1000),rep(10,1000),rep(30,1000))) 
