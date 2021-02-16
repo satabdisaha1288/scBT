@@ -6,6 +6,13 @@ output: html_notebook
 Generate the data according to the Bayesian model scheme
 
 ```{r}
+#K is the number of groups, n=number of cells;
+#p=number of genes
+#sigma_j_squared ~ Inverse Gamma( a_sigma, b_sigma)
+#omega_k_j ~ Beta( a_k_w,b_k_w)
+#mu_k_j ~Normal(m_k_0, tau_k_mu*sigma_j_squared)
+#R_i_j ~ Bernoulli(omega_k_j)
+#Y_i_j|R_i_j = 1 ~ Normal(u_k_j,sigma_j_squared)# this is the hurdle normal data
 K=9;p=100;n=1000;a_sigma=7;b_sigma=3;tau_k_mu<-rep(1,9);
 #m_0_group<-sapply(mean_exp_group, function(x) mean(x))
 m_0_group<-c(1.521247,1.494018,1.470234,1.527509,1.566498,
