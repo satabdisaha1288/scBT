@@ -1,0 +1,98 @@
+---
+title: "Generate simulated data according to the Bayesian model scheme"
+output: html_notebook
+---
+
+Generate the data according to the Bayesian model scheme
+
+```{r}
+K=9;p=100;n=1000;a_sigma=7;b_sigma=3;tau_k_mu<-rep(1,9);
+#m_0_group<-sapply(mean_exp_group, function(x) mean(x))
+m_0_group<-c(1.521247,1.494018,1.470234,1.527509,1.566498,
+             1.549127,1.545287,1.479459,1.388114)
+names(m_0_group)<-levels(dose_level)
+a_w_group<-c(8,10,11,11,10,10,10,8,3)
+b_w_group = c(2,2,2,2,4.9,9,9,3,2)
+names(a_w_group)<-levels(dose_level)
+names(b_w_group)<-levels(dose_level)
+tau_k_mu<-rep(1,9)
+names(tau_k_mu)<-levels(dose_level)
+omega<-rep(list(vector("numeric")),K)
+mu<-rep(list(vector("numeric")),K)
+sigma_squared<-rinvgamma(p,shape=a_sigma,rate=b_sigma)
+y<-rep(list(matrix(NA,nrow=p,ncol = n,byrow = TRUE)),K)
+r<-rep(list(matrix(NA,nrow=p,ncol = n,byrow = TRUE)),K)
+hurdle_normal_data<-rep(list(matrix(NA,nrow=p,ncol = n,byrow = TRUE)),K)
+names(y)<-levels(dose_level);names(r)<-levels(dose_level);
+names(hurdle_normal_data)<-levels(dose_level)
+for(k in levels(dose_level))
+{
+  set.seed(100*k)
+  omega[[k]]<-rbeta(p,a_w_group[k],b_w_group[k])
+  for(j in 1:p)
+  {
+    set.seed(100*j)
+mu[[k]][j]<-rnorm(1,mean= m_0_group[k],
+          sd =sqrt(tau_k_mu[k]*sigma_squared[j]))
+    r[[k]][j,]<-rbinom(1000,1,omega[[k]][j])
+    y[[k]][j,]<-rnorm(1000,mu[[k]][j],sqrt(sigma_squared[j]))
+  }
+  hurdle_normal_data[[k]]<-y[[k]]*r[[k]] 
+}
+#hurdle_normal_data is the simulated data for 100 genes
+```
+
+```{r}
+#Run BayesFactorMultiple.R
+bf_multiple_01<-rep(list(list()),p)
+source('~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/R/BayesFactorMultiple.R')
+for(j in 1:p)
+{
+   bf_multiple_01[[j]]<-Bayes_factor_multiple(
+                 Y = list(Y_1=as.matrix(hurdle_normal_data[["0"]][j,]), 
+                           Y_2=as.matrix(hurdle_normal_data[["0.01"]][j,]),
+                           Y_3=as.matrix(hurdle_normal_data[["0.03"]][j,]),
+                           Y_4=as.matrix(hurdle_normal_data[["0.1"]][j,]),
+                           Y_5=as.matrix(hurdle_normal_data[["0.3"]][j,]),
+                           Y_6=as.matrix(hurdle_normal_data[["1"]][j,]),
+                           Y_7=as.matrix(hurdle_normal_data[["3"]][j,]),
+                           Y_8=as.matrix(hurdle_normal_data[["10"]][j,]),
+                           Y_9=as.matrix(hurdle_normal_data[["30"]][j,])),
+                           m_0=mean(m_0_group),
+                           m=m_0_group, K=9,
+                           tau_k_mu =tau_k_mu,tau_mu=tau_mu[2], 
+                           b_sigma=3,a_sigma=7,a_w,b_w,
+                           prior_alt =prior_Alter[5],
+                           prior_null = prior_Null[5]) 
+}
+```
+
+
+```{r}
+#Extract the Bayes factors for 100 iterations of all the 100 genes
+bf_multiple_01_value<-sapply(bf_multiple_01,
+                            function(x) exp(x$l_Bayes_factor_01))
+# BF decision
+bf_multiple_01_decision<-ifelse(bf_multiple_01_value < (1/3), "Positive","Negative")
+```
+
+```{r}
+#Benchmark performance with the ANOVA and KW test.
+source('~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/R/anova_test.R')
+source('~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/R/KW_test.R')
+mydata<-data.frame(t(data.frame(hurdle_normal_data[["0"]],
+              hurdle_normal_data[["0.01"]],hurdle_normal_data[["0.03"]],              hurdle_normal_data[["0.1"]],hurdle_normal_data[["0.3"]],
+            hurdle_normal_data[["1"]],hurdle_normal_data[["3"]],
+            hurdle_normal_data[["10"]],hurdle_normal_data[["30"]])),
+                     c(rep(0,1000),rep(0.01,1000),rep(0.03,1000),
+                       rep(0.1,1000),rep(0.3,1000),rep(1,1000),
+                       rep(3,1000),rep(10,1000),rep(30,1000))) 
+  colnames(mydata)<-c(rownames(data_small[["0"]]),"Dose")
+  my_data_kruskal_p_value<-KW_test(mydata)
+  my_data_anova_p_value<-anova_test(mydata)
+
+my_data_anova_pred_dec<- ifelse( my_data_anova_p_value< 0.05, "Positive","Negative")
+my_data_kruskal_pred_dec<- ifelse(my_data_kruskal_p_value < 0.05, "Positive","Negative")
+
+```
+
