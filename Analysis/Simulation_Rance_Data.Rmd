@@ -10,15 +10,25 @@ simulated.cell.metadata is the cell metadata matrix having the dose level inform
 simulated.gene.metadata is the gene metadata matrix having 2300 rows and 4 columns, where the columns correspond to gene names,model: the model dose response curve that the gene follows and Direction: which states whether the gene is UpRegulated or DownRegulated.
 
 ```{r}
-simulated.data <- read.delim("~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/New_Simulations/simDataFinal.lognormcounts.txt")
-rownames(simulated.data)<-simulated.data[,1]
-simulated.data<-simulated.data[,-1]
-simulated.cell.metadata <-read.delim("~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/New_Simulations/simCellMeta.txt")
-simulated.gene.metadata <- read.delim("~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/New_Simulations/simGeneMeta.txt")
-simulated.gene.metadata<-simulated.gene.metadata[,-1]
+# simulated.data <- read.delim("~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/New_Simulations/simDataFinal.lognormcounts.txt")
+# rownames(simulated.data)<-simulated.data[,1]
+# simulated.data<-simulated.data[,-1]
+# simulated.cell.metadata <-read.delim("~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/New_Simulations/simCellMeta.txt")
+# simulated.gene.metadata <- read.delim("~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/New_Simulations/simGeneMeta.txt")
+# simulated.gene.metadata<-simulated.gene.metadata[,-1]
 ```
 
+Data Description: 
 
+simulated.data is simulated lognormcounts matrix having 2500 genes and 4500 cells. 
+simulated.cell.metadata is the cell metadata matrix having the dose level information for the 4500 cells. There are a total of 9 dose groups with 500 cells each.
+simulated.gene.metadata is the gene metadata matrix having 2500 rows and 4 columns, where the columns correspond to gene names,model: the model dose response curve that the gene follows and Direction: which states whether the gene is UpRegulated or DownRegulated.
+
+```{r}
+simulated.data<-read.csv("~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/simulatedCorrectProportions/norm_sim_correctprop.txt", sep="")
+simulated.cell.metadata<-read.csv("~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/simulatedCorrectProportions/sim_correctprop_cellMeta.txt", sep="")
+simulated.gene.metadata<-read.csv("~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/simulatedCorrectProportions/sim_correctprop_geneMeta.txt", sep="")
+```
 
 ```{r}
 library(data.table)
