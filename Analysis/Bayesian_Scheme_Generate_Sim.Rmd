@@ -13,6 +13,7 @@ Generate the data according to the Bayesian model scheme
 #mu_k_j ~Normal(m_k_0, tau_k_mu*sigma_j_squared)
 #R_i_j ~ Bernoulli(omega_k_j)
 #Y_i_j|R_i_j = 1 ~ Normal(u_k_j,sigma_j_squared)# this is the hurdle normal data
+#All the hyperparameters have been learnt from real data
 K=9;p=100;n=1000;a_sigma=7;b_sigma=3;tau_k_mu<-rep(1,9);
 #m_0_group<-sapply(mean_exp_group, function(x) mean(x))
 m_0_group<-c(1.521247,1.494018,1.470234,1.527509,1.566498,
@@ -26,7 +27,7 @@ tau_k_mu<-rep(1,9)
 names(tau_k_mu)<-levels(dose_level)
 omega<-rep(list(vector("numeric")),K)
 mu<-rep(list(vector("numeric")),K)
-sigma_squared<-rinvgamma(p,shape=a_sigma,rate=b_sigma)
+sigma_squared<-invgamma::rinvgamma(p,shape=a_sigma,rate=b_sigma)
 y<-rep(list(matrix(NA,nrow=p,ncol = n,byrow = TRUE)),K)
 r<-rep(list(matrix(NA,nrow=p,ncol = n,byrow = TRUE)),K)
 hurdle_normal_data<-rep(list(matrix(NA,nrow=p,ncol = n,byrow = TRUE)),K)
@@ -34,7 +35,7 @@ names(y)<-levels(dose_level);names(r)<-levels(dose_level);
 names(hurdle_normal_data)<-levels(dose_level)
 for(k in levels(dose_level))
 {
-  set.seed(100*k)
+  #set.seed(100*k)
   omega[[k]]<-rbeta(p,a_w_group[k],b_w_group[k])
   for(j in 1:p)
   {
@@ -99,7 +100,11 @@ mydata<-data.frame(t(data.frame(hurdle_normal_data[["0"]],
   my_data_anova_p_value<-anova_test(mydata)
 
 my_data_anova_pred_dec<- ifelse( my_data_anova_p_value< 0.05, "Positive","Negative")
-my_data_kruskal_pred_dec<- ifelse(my_data_kruskal_p_value < 0.05, "Positive","Negative")
 
+
+```
+
+```{r}
+my_data_kruskal_pred_dec<- ifelse(my_data_kruskal_p_value < 0.05, "Positive","Negative")
 ```
 
