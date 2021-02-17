@@ -3,7 +3,7 @@ title: "Generate simulated data according to the Bayesian model scheme"
 output: html_notebook
 ---
 
-Generate the data according to the Bayesian model scheme
+Generate the data (p genes and n cells) according to the Bayesian model scheme
 
 ```{r}
 #K is the number of groups, n=number of cells;
@@ -95,16 +95,20 @@ mydata<-data.frame(t(data.frame(hurdle_normal_data[["0"]],
                      c(rep(0,1000),rep(0.01,1000),rep(0.03,1000),
                        rep(0.1,1000),rep(0.3,1000),rep(1,1000),
                        rep(3,1000),rep(10,1000),rep(30,1000))) 
-  colnames(mydata)<-c(rownames(data_small[["0"]]),"Dose")
-  my_data_kruskal_p_value<-KW_test(mydata)
-  my_data_anova_p_value<-anova_test(mydata)
-
+for(i in 1:ncol(mydata)-1)
+{
+  colnames(mydata)[i]<-sprintf("%s%i", "gene",i)
+}
+colnames(mydata[ncol(mydata)])<-"Dose"
+my_data_kruskal_p_value<-KW_test(mydata)
+my_data_anova_p_value<-anova_test(mydata)
 my_data_anova_pred_dec<- ifelse( my_data_anova_p_value< 0.05, "Positive","Negative")
 
-
+my_data_anova_pred_dec
 ```
 
 ```{r}
 my_data_kruskal_pred_dec<- ifelse(my_data_kruskal_p_value < 0.05, "Positive","Negative")
+my_data_kruskal_pred_dec
 ```
 
