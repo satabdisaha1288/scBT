@@ -1,0 +1,263 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+## Setting up the environment and displaying session information for reproducibility
+```{r}
+library(Seurat, quietly = TRUE)
+library(ggplot2, quietly = TRUE)
+library(dplyr, quietly = TRUE)
+library(doParallel, quietly = TRUE)
+library(tidyverse, quietly = TRUE)
+library(matrixStats, quietly = TRUE)
+source_path = 'C:\\Users\\15177\\OneDrive - Michigan State University\\Documents\\Projects\\Prj161-snSeq-Mm_TCDD_DR_Sept2019\\snSeq-DGE\\R\\simulation_functions.R'
+source('../R/dose_response_models.R') #TODO: CHANGE TO RELATIVE PATH
+source("../R/Bayes_factor.R")
+sessionInfo()
+memory.limit(size = 64000)
+```
+
+#### _MOVE THIS TO R DIRECTORY_
+```{r}
+#x is a gene expression vector for gene A under control
+#y is a gene expression vector for gene A under treatment
+logFC<-function(x,y)
+{
+ lfc<-mean(y) - mean(x)
+ return(lfc)
+}
+```
+
+## Import the single-cell expression dataset along with the cell and gene metadata. The following is a simulated dataset
+```{r}
+simImport = readRDS('simData.RData')
+dose_levels = factor(simImport$meta$Dose)
+```
+
+## Separate the individual dose groups and estimate sigma and omega parameters
+* sigma is the nonzero portion of the data.
+* omega is the zero portion of the data.
+```{r}
+counts = list()
+percent.zero = data.frame(Gene = simImport$geneMeta$Gene)
+mean.nonzero = data.frame(Gene = simImport$geneMeta$Gene)
+sigma = data.frame(Gene = simImport$geneMeta$Gene)
+omega = data.frame(Gene = simImport$geneMeta$Gene)
+logFC = data.frame(Gene = simImport$geneMeta$Gene)
+
+for (d in levels(dose_levels)){
+  #dose = paste('Dose', d, sep = '_')
+  dose = as.character(d)
+  counts[[dose]] = as.matrix(simImport$norm[,which(simImport$meta$Dose == d)])
+  percent.zero[,dose] = apply(counts[[dose]], 1, function(x) length(which(x > 0))/length(x))
+  mean.nonzero[,dose] = apply(counts[[dose]], 1, function(x) mean(x[which(x > 0)]))
+  sigma[,dose] = apply(counts[[dose]], 1, function(x) var(x[which(x > 0)]))
+  omega[,dose] = apply(counts[[dose]], 1, function(x) length(which(x == 0))/length(x))
+  logFC[,dose] = mean.nonzero[,dose] - mean.nonzero[,levels(dose_levels)[1]]
+  
+  rownames(percent.zero) = rownames(mean.nonzero) = rownames(sigma) = rownames(omega) = simImport$geneMeta$Gene
+}
+```
+
+## Reformat to include all metadata
+```{r}
+percent.zero = reshape2::melt(percent.zero, id.vars = 'Gene', value.name = 'percent.zero', variable.name = c('dose')) #Change to min percent.zero
+mean.nonzero = reshape2::melt(mean.nonzero, id.vars = 'Gene', value.name = 'mean.nonzero', variable.name = c('dose'))
+sigma = reshape2::melt(sigma, id.vars = 'Gene', value.name = 'sigma', variable.name = c('dose'))
+omega = reshape2::melt(omega, id.vars = 'Gene', value.name = 'omega', variable.name = c('dose'))
+logFC = reshape2::melt(logFC, id.vars = 'Gene', value.name = 'logFC', variable.name = c('dose'))
+
+geneData = percent.zero %>% 
+  full_join(mean.nonzero, by = c('Gene','dose')) %>% 
+  full_join(sigma, by = c('Gene','dose')) %>% 
+  full_join(omega, by = c('Gene','dose')) %>% 
+  full_join(logFC, by = c('Gene','dose')) %>% 
+  full_join(simImport$geneMeta, by = c('Gene'))
+```
+
+## Summarize the parameters
+```{r}
+#p.zero.means = colMeans(p.zero[,2:10])
+mean.nonzero.means = geneData %>% group_by(dose) %>% summarize(mean = mean(mean.nonzero))
+sigma.means = geneData %>% group_by(dose) %>% summarize(mean = mean(sigma))
+omega.means = geneData %>% group_by(dose) %>% summarize(mean = mean(omega))
+
+mean.nonzero.vars = geneData %>% group_by(dose) %>% summarize(mean = var(mean.nonzero))
+sigma.vars = geneData %>% group_by(dose) %>% summarize(mean = var(sigma))
+omega.vars = geneData %>% group_by(dose) %>% summarize(mean = var(omega))
+
+m_0=mean(mean.nonzero.means$mean)
+m_c0 = as.numeric(mean.nonzero.means[1,2])
+```
+
+## __Not sure what is happening here__
+```{r}
+tau_t_mu = tau_c_mu = tau_mu = c(0.5,1,2,3)
+#Use sigma_mean and sigma_var to solve for b_sigma and a_sigma
+b_sigma = 1
+a_sigma = 6
+#Use mean and variance of omega to solve for a_w and b_w
+a_w = a_c_w = a_t_w = 8
+b_w = b_c_w = b_t_w = 2
+prior_Alter<-c(1-((0.83)^(1/200)),0.01,0.05,0.1)
+prior_Null<- 1-prior_Alter
+```
+
+#actual bayes factor computed in overleaf
+##BF FDR control using jeffreys 
+
+```{r}
+bayes_df = data.frame(dose = character(),
+                      Gene = integer(), 
+                      l_D0 = double(),
+                      l_D1 = double(),
+                      l_D2 = double(),
+                      l_D3 = double(),
+                      l_D4 = double(),
+                      l_D5 = double(),
+                      l_D6 = double(),
+                      l_D7 = double(),
+                      l_likelihood = double(),
+                      l_prior_odds = double(),
+                      l_Bayes_factor_01 = double(),
+                      wilcoxon = double()
+                      )
+n = 1
+for (i in names(counts)[-1]){
+  n = n + 1
+  m_t0 = as.numeric(mean.nonzero.means[n,2])
+  for(j in 1:nrow(counts[[1]])){
+    bayes = Bayes_factor(Y_t=as.matrix(counts[[i]][j,]),
+                           Y_c=as.matrix(counts[["0"]][j,]),
+                           m_t0,m_c0,m_0,
+                           tau_t_mu,tau_c_mu, tau_mu=tau_mu[3], 
+                           b_sigma,a_sigma,a_w,a_c_w,a_t_w,b_w,b_t_w,b_c_w,
+                           prior_alt = prior_Alter[4],
+                           prior_null = prior_Null[4])
+    #Also include here the calculation for percent zero, mean, fold-change, etc...
+    wilcoxon = wilcox.test(as.matrix(counts[[i]][j,]), as.matrix(counts[["0"]][j,]))$p.value
+    bayes_df[nrow(bayes_df) + 1,] = c(i, j, unlist(bayes), wilcoxon)
+  }
+}
+bayes_df$bf_act_01 = exp(as.numeric(bayes_df$l_Bayes_factor_01))
+bayes_df$Gene = paste('gene', bayes_df$Gene, sep ='')
+fullData = geneData %>% 
+  full_join(bayes_df, by = c('Gene','dose'))
+fullData$dose = factor(fullData$dose, levels = c('0','0.01','0.03','0.1','0.3','1','3','10','30'))
+
+```
+
+```{r}
+head(fullData)
+```
+
+
+```{r fig.width=15, fig.height = 6}
+ggplot(data = fullData %>% filter(dose != 0), aes(y = (bf_act_01), x = Model, color = Direction)) +
+  facet_wrap(~dose) +
+  geom_violin() +
+  scale_y_continuous(trans = 'log10') +
+  theme_bw()
+
+ggplot(data = fullData %>% filter(dose != 0), aes(y = (logFC), x = Model, color = Direction)) +
+  facet_wrap(~dose) +
+  geom_violin() +
+  #scale_y_continuous(trans = 'log10') +
+  theme_bw()
+```
+
+
+```{r fig.width=15, fig.height = 6}
+ggplot(data = fullData %>% filter(dose != 0), aes(x = logFC, y = bf_act_01)) +
+  geom_point() +
+  facet_wrap(~Model) +
+  theme_bw()
+
+ggplot(data = fullData %>% filter(dose != 0) %>%filter(bf_act_01 <= (1/30)), aes(x = logFC, y = bf_act_01)) +
+  geom_point() +
+  facet_wrap(~Model) +
+  theme_bw()
+```
+```{r fig.width=15, fig.height = 6}
+ggplot(data = fullData %>% filter(dose != 0), aes(x = logFC, y = bf_act_01)) +
+  geom_point() +
+  facet_wrap(~dose) +
+  theme_bw()
+
+ggplot(data = fullData %>% filter(dose != 0) %>%filter(bf_act_01 <= (1/30)), aes(x = logFC, y = bf_act_01)) +
+  geom_point() +
+  facet_wrap(~dose) +
+  theme_bw()
+```
+```{r fig.width=15, fig.height = 6}
+ggplot(data = fullData %>% filter(dose != 0), aes(x = percent.zero, y = bf_act_01)) +
+  geom_point() +
+  facet_wrap(~Model) +
+  theme_bw()
+
+ggplot(data = fullData %>% filter(dose != 0) %>%filter(bf_act_01 <= (1/30)), aes(x = percent.zero, y = bf_act_01)) +
+  geom_point() +
+  facet_wrap(~Model) +
+  theme_bw()
+```
+
+
+```{r fig.width=15, fig.height = 6}
+ggplot(data = fullData %>% filter(dose != 0), aes(x = percent.zero, y = bf_act_01)) +
+  geom_point() +
+  facet_wrap(~dose) +
+  theme_bw()
+
+ggplot(data = fullData %>% filter(dose != 0) %>%filter(bf_act_01 <= (1/30)), aes(x = percent.zero, y = bf_act_01)) +
+  geom_point() +
+  facet_wrap(~dose) +
+  theme_bw()
+```
+
+```{r fig.width=15, fig.height = 6}
+ggplot(data = fullData %>% filter(dose != 0), aes(x = wilcoxon, y = bf_act_01)) +
+  geom_point() +
+  facet_wrap(~dose) +
+  theme_bw()
+
+ggplot(data = fullData %>% filter(dose != 0) %>%filter(bf_act_01 <= (1/30)), aes(x = wilcoxon, y = bf_act_01)) +
+  geom_point() +
+  facet_wrap(~dose) +
+  theme_bw()
+```
+
+
+
+```{r fig.width=15, fig.height = 6}
+ggplot(data = fullData %>% filter(dose != 0), aes(x = wilcoxon, y = bf_act_01)) +
+  geom_point() +
+  facet_wrap(~Model) +
+  theme_bw()
+
+ggplot(data = fullData %>% filter(dose != 0) %>%filter(bf_act_01 <= (1)), aes(x = wilcoxon, y = bf_act_01)) +
+  geom_point() +
+  facet_wrap(~Model) +
+  theme_bw()
+```
+
+```{r fig.width=15, fig.height = 6}
+ggplot(data = fullData %>% filter(dose != 0), aes(x = logFC, y = wilcoxon)) +
+  geom_point() +
+  facet_wrap(~Model) +
+  theme_bw()
+
+ggplot(data = fullData %>% filter(dose != 0) %>%filter(bf_act_01 <= (1)), aes(x = logFC, y = wilcoxon)) +
+  geom_point() +
+  facet_wrap(~Model) +
+  theme_bw()
+```
+
+
+```{r}
+ggplot(data = fullData, aes(y = percent.zero)) +
+  facet_wrap(~dose) +
+  geom_histogram() +
+  theme_bw()
+```
+
