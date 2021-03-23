@@ -1,5 +1,6 @@
 LRT_multiple_groups <- function(data, data_ind){
-  ## data_ind is a list having K vectors of the zeroes/ones for expressed or not in each of the K -groups
+  ## data_ind is a list having K vectors of the zeroes/ones for expressed or not
+  ##in each of the K -groups
   ##  data is the list of vectors of the positive observations( must of length sum(each vector in data_ind))
   
   data_pos<-lapply(data_ind,function(x) sum(x))
@@ -34,7 +35,7 @@ Tstar <-  1+(ss_between/ss_residuals)
 if(!is.finite(Tstar)){
   Tstar <- 1
 }
-norm <- -(Reduce("+",data_pos))/2 * log(Tstar)
+norm <- -((Reduce("+",data_pos))/2) * log(Tstar)
 a<-vector()
 b<-vector()
 for(k in 1: length(data))
@@ -47,8 +48,8 @@ binom <- sum(a)+sum(b)
 logLR <- binom + norm
 
 resultvec <- c(-2*binom,  pchisq(-2*binom, length(data) - 1 , lower.tail=FALSE),
-               norm,  pf(norm, length(data) - 1,Reduce("+",data_size), lower.tail=FALSE),
-               -2*logLR, pchisq(-2*logLR,length(data) , lower.tail=FALSE))
+               -2*norm,  pchisq(-2*norm, length(data) - 1, lower.tail=FALSE),
+               -2*logLR, pchisq(-2*logLR,2*length(data)-2 , lower.tail=FALSE))
 result <- matrix(resultvec, nrow=2, ncol=3, dimnames=list(metric=c('lrstat', 'p.value'), component=c('binom', 'norm', 'comb')))
 return(result)
 
