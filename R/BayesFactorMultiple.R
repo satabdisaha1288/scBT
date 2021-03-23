@@ -1,5 +1,6 @@
 #Calculation of Bayes factor
-#Y : list of size K of n times p matrices of observed data having n cells and p genes in K treatment dose groups 
+#Y : list of size K (nlevels(dose_level)) of n (cells) times p(gene, in our case p=1) 
+# matrices of observed data having n cells and p genes in K treatment dose groups 
 #in the treatment group
 #K is the number of groups
 #m is the vector of group means
@@ -17,20 +18,32 @@ Bayes_factor_multiple<-function(Y,m,m_0,tau_k_mu,K,
   l_D4<-vector(mode = "numeric",length = ncol(Y[[1]]))
   l_D5<-vector(mode = "numeric",length = ncol(Y[[1]]))
   l_Bayes_factor_01<-vector(mode = "numeric",length = ncol(Y[[1]]))
+  # n: number of cells in each dose groups
   n<- sapply(Y, function(x) nrow(x))
+  # Number of genes being tested in each dose group ( in case of indepengent testing p=1)
   p<- sapply(Y, function(x) ncol(x))
+  # list of K dose level indicator matrices (1 for positive expression)
   R <- lapply(Y, function(x) ifelse(x>0,1,0))
+  # vector of length dose_level giving the total number of positively expressed cells in each dose group
   R_colsum<-sapply(R, function(x) colSums(x))
+  # constant denoting the total number of positively expressed cells across all dose groups
   R_grand_sum<-sum(R_colsum)
+  #list of squared Y matrices where
   Y_squared<- Map("*",Y,Y)
   R_y_2<-Map("*" ,R , Y_squared)
+  #vector of length dose_level
   R_y_2_colsum<-sapply(R_y_2, function(x) colSums(x))
   R_y<-Map("*" ,R , Y)
+  #vector of length dose_level
   R_y_colsum<-sapply(R_y, function(x) colSums(x))
+  #constant
   R_y_grand_colsum<-sum(R_y_colsum)
+  #constant
   R_y_2_grand_colsum<-sum(R_y_2_colsum)
+  #vector of length dose_level
   A<- R_y_2_colsum + ((m^2)/tau_k_mu) - 
        (((R_y_colsum + (m/tau_k_mu))^2)/ (R_colsum + (1/tau_k_mu)))
+  #constant
   A_tot<- R_y_2_grand_colsum + ((m_0^2)/tau_mu) -
      (((R_y_grand_colsum + (m_0/tau_mu))^2)/ (R_grand_sum + (1/tau_mu)))
   
