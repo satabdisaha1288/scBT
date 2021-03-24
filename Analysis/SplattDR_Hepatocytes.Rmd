@@ -10,16 +10,6 @@ simulated.cell.metadata is the cell metadata matrix having the dose level inform
 simulated.gene.metadata is the gene metadata matrix having 2500 rows and 4 columns, where the columns correspond to gene names,model: the model dose response curve that the gene follows and Direction: which states whether the gene is UpRegulated or DownRegulated.
 
 ```{r}
-# simulated.data<-read.csv("~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/SplattDR/normexp_splattdr.txt", sep="")
-# simulated.cell.metadata<-read.csv("~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/SplattDR/cellMeta_splattdr.txt", sep="")
-# simulated.gene.metadata<-read.csv("~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/SplattDR/geneMeta_splattdr.txt", sep="")
-# a=apply(simulated.data,1, function(x) length(which(x==0)))
-# b<-which(a==ncol(simulated.data))
-# simulated.data<-simulated.data[-b,]
-# simulated.gene.metadata<-simulated.gene.metadata[-b,]
-```
-
-```{r}
 #Read data from a single cell object
 simDR<-readRDS("~/Downloads/simDR.RData")
 simulated.data<-logcounts(simDR)
@@ -391,6 +381,10 @@ source('~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/R/anova_te
 source('~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/R/KW_test.R')
 #Here data is a dataframe of n cells as rows and p+1 columns with first p columns as p genes and the last 
 #column is the dose information
+for(j in 1: nrow(data[["0"]]))
+{
+  log_fold_change[j] = logFC(data[["0"]][j,],data[["30"]][j,])
+}
 mydata<-simulated.data_dose
 my_data_kruskal_p_value<-KW_test(mydata)
 my_data_kruskal_p_value<-p.adjust(my_data_kruskal_p_value,"fdr")
@@ -487,6 +481,10 @@ caret::confusionMatrix(factor(pred_dec_WRS_comb_lfc,levels=c("Positive","Negativ
 
 ```{r}
 #Perform the LRT test for multiple classes.
+for(j in 1: nrow(data[["0"]]))
+{
+  log_fold_change[j] = logFC(data[["0"]][j,],data[["30"]][j,])
+}
 LRT_mult<-rep(list(list()),nrow(data[["0"]]))
 data_ind<-lapply(data,function(x) ifelse(x>0,1,0))
 for( i in 1: nrow(data[["0"]]))
