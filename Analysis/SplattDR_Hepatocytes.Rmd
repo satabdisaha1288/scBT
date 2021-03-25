@@ -11,7 +11,7 @@ simulated.gene.metadata is the gene metadata matrix having 2500 rows and 4 colum
 
 ```{r}
 #Read data from a single cell object
-simDR<-readRDS("~/Downloads/simDR.RData")
+simDR<-readRDS("~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/SplattDR/simDR.RData")
 simulated.data<-logcounts(simDR)
 simulated.cell.metadata<-colData(simDR)
 simulated.gene.metadata<-rowData(simDR)
@@ -89,9 +89,11 @@ a_sigma = 6
 #We keep the same values of a_w and b_w for all groups since the omega mean and omega SD values are more or less consistent.
 a_w = a_t_w = 0.8 #t refers to the treatment groups
 b_w = b_t_w = 0.2
-#length(which(simulated.gene.metadata$Category == "Positive"))
-prior_Alter<-c(1-((0.76)^(1/1900)),0.01,0.05,0.1, 0.2,0.3,0.4,0.5)
-prior_Null<- 1-prior_Alter
+
+prop_DE<-length(which(simulated.gene.metadata$Model != "Unchanged"))/length(simulated.gene.metadata$Model)
+# Calculate prior_Null for all three approaches local,global,multiplicity corrected
+prior_Null<- c( (1-prop_DE), 0.9 ,((1-prop_DE)^(2/length(simulated.gene.metadata$Model))))
+prior_Alter<-1-prior_Null
 ```
 
 ```{r}
@@ -115,8 +117,8 @@ source('~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/R/BayesFac
                            m_0=mean(m),m=m,K=9,
                            tau_k_mu =tau_k_mu,tau_mu=tau_mu[2], 
                            b_sigma=1,a_sigma=6,a_w=8,b_w=2,
-                           prior_alt =prior_Alter[4],
-                           prior_null = prior_Null[4])
+                           prior_alt =prior_Alter[2],
+                           prior_null = prior_Null[2])
   }
 ```
 
