@@ -1,0 +1,45 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+source("C:\\Users\\15177\\OneDrive - Michigan State University\\Documents\\CodeSnippets\\fastbmdR\\fastbmdR\\fastbmdR_main.R")
+source("C:\\Users\\15177\\OneDrive - Michigan State University\\Documents\\CodeSnippets\\fastbmdR\\fastbmdR\\fastbmdR_utils.R")
+```
+
+```{r}
+models = c("Exp2","Exp3","Exp4","Exp5","Poly2","Lin","Power","Hill")
+```
+
+```{r}
+doses = as.character(colData(simDR)$Dose)
+sn.data = assays(simDR)$logcount[2:2,]
+```
+
+```{r}
+ncpus =1
+```
+
+
+```{r}
+# perform curve fitting
+res <- PerformCurveFitting(data = sn.data, dose = doses, ncpus = ncpus, models = models)
+```
+
+
+```{r}
+# filter to select best fit model for each gene
+res <- FilterDRFit(res, lof.pval = 0.1)
+```
+
+
+```{r}
+# perform benchmark dose calculation
+bmd.res <- PerformBMDCalc(res, ncpus = ncpus, num.sds = 1, sample.mean = TRUE)
+
+# Results are returned for each gene in res. See the last few columns of bmd.res 
+# for whether a gene BMD passed various quality criteria.
+
+```
+
