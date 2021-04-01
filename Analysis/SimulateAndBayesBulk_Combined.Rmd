@@ -1,0 +1,668 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(dplyr, quietly = TRUE)
+library(tidyr, quietly = TRUE)
+library(ggplot2, quietly = TRUE)
+library(SingleCellExperiment, quietly = TRUE)
+library(splatter, quietly = TRUE)
+library(matrixStats, quietly = TRUE)
+library(caret, quietly = TRUE)
+library(Matrix, quietly = TRUE)
+library(data.table, quietly = TRUE)
+library(MAST, quietly = TRUE)
+```
+
+```{r}
+
+path1 = list.files('C://Users/15177/OneDrive - Michigan State University/Documents/Projects/Prj161-snSeq-Mm_TCDD_DR_Sept2019/snSeq-DGE/R', full.names = TRUE)
+path2 = list.files('C://Users/15177/OneDrive - Michigan State University/Documents/CodeSnippets/splatter/R', full.names = TRUE)
+#path1 = list.files('R/', full.names = TRUE)
+#path2 = list.files('splatter/R/', full.names = TRUE)
+sapply(path1, source)
+sapply(path2, source)
+#simDR = readRDS('simDR.simulation1.batch.RData')
+```
+
+[Splat](www.google.com) parameters were estimated using real single-nuclei RNA sequencing data for each individual cell types (cluster) and dose. The list of is collapsed into a matrix from which parameters used. 
+```{r}
+params.list = readRDS('C://Users//15177//Downloads//dr.param.list.RData')
+#params.list = readRDS('~/SNSEQDATA_FINAL/dr.param.list.RData')
+splat.param = data.frame(matrix(NA, ncol = 32, nrow = 0))
+colnames(splat.param) = names(attributes(params.list[[1]]))
+for (name in names(params.list)){
+  splat.param[name,] = attributes(params.list[[name]])
+}
+splat.param$cell.dose = rownames(splat.param)
+splat.param = splat.param %>% separate(cell.dose, c("cell","dose"), sep = '_')
+
+splat.long = reshape2::melt(splat.param[,c('nCells', 'cell', 'dose','mean.rate', 'mean.shape', 'out.prob', 'out.facLoc', 'out.facScale', 'bcv.common', 'bcv.df', 'dropout.mid', 'dropout.shape', 'lib.loc', 'lib.scale')], id.var = c('cell','dose'))
+```
+
+Initialize the simulation conditions
+```{r}
+dose.names = c(0, 0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30)
+set.seed = 343
+sim.settings.list= list()
+i = 0
+for (ct in unique(splat.long$cell)){
+  for (de.prob in c(0.1, 0.25, 0.5, 0.75)){
+    for (true.count in 1:2){
+      for (iter in 1:10){
+        i = i + 1
+        simName = paste0('Simulation',i)
+        seed = sample(1:1000, 1)
+
+        param.medians = splat.long %>%
+        group_by(cell, variable) %>%
+        summarize(median = median(value)) %>%
+        filter(cell == ct) %>%
+        spread(variable, median)
+        
+        if (true.count == 2){
+          dose.prob = splat.long %>% group_by(cell, variable) %>% filter(cell == ct & variable == 'nCells') %>% arrange(dose) %>% pull(value)
+        } else {
+          dose.prob = rep(param.medians$nCells, length(dose.names))
+        }
+        tot.Cells = sum(dose.prob)
+        prop.Cells = dose.prob/sum(dose.prob)
+        
+        params = newSplatParams()
+        params@mean.rate = param.medians$mean.rate
+        params@mean.shape = param.medians$mean.shape
+        params@lib.loc = param.medians$lib.loc
+        params@lib.scale = param.medians$lib.scale
+        params@out.prob = param.medians$out.prob
+        params@out.facLoc = param.medians$out.facLoc
+        params@out.facScale = param.medians$out.facScale
+        params@bcv.common = param.medians$bcv.common
+        params@bcv.df = param.medians$bcv.df
+        params@dropout.mid = param.medians$dropout.mid
+        params@dropout.shape = param.medians$dropout.shape
+        params@de.prob = de.prob
+        params@de.facLoc = param.medians$out.facLoc
+        params@nBatches = 1
+        params@nCells = tot.Cells
+        params@nGenes = 500
+        params@seed = seed
+        
+        #Set and record seed
+        sim.settings.list[[simName]]$seed = seed
+        sim.settings.list[[simName]]$dose.prob = prop.Cells
+        sim.settings.list[[simName]]$param = params
+      }
+    }
+  }
+}
+```
+
+
+```{r}
+#Fixed parameters
+tau_t_mu = tau_c_mu = tau_mu = c(0.5,1,2,3)
+tau_k_mu<-rep(1,9)
+names(tau_k_mu) = c(0, 0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30)
+#Use sigma_mean and sigma_var to solve for b_sigma and a_sigma
+b_sigma = 1
+a_sigma = 6
+#Use mean and variance of omega to solve for a_w and b_w
+#We keep the same values of a_w and b_w for all groups since the omega mean and omega SD values are more or less consistent.
+a_w = a_t_w = 0.8 #t refers to the treatment groups
+b_w = b_t_w = 0.2
+```
+
+
+
+```{r}
+stat.out = list()
+simDR = list()
+for (simNo in names(sim.settings.list)) {
+  
+  vec_elem = simNo
+  message(vec_elem)
+  
+  set.seed = sim.settings.list[[simNo]]$seed
+  params = sim.settings.list[[simNo]]$param
+  dose.prob = sim.settings.list[[simNo]]$dose.prob
+  
+  simDR[[vec_elem]] = splatSimulateDR(params, method = 'doseresp', dose.names = dose.names, dose.prob = dose.prob, verbose = FALSE)
+  assays(simDR[[vec_elem]])$BatchCellMeans = NULL
+  assays(simDR[[vec_elem]])$BaseCellMeans = NULL
+  assays(simDR[[vec_elem]])$BCV = NULL
+  assays(simDR[[vec_elem]])$CellMeans = NULL
+  assays(simDR[[vec_elem]])$TrueCounts = NULL	
+  assays(simDR[[vec_elem]])$counts = Matrix(assays(simDR[[vec_elem]])$counts, sparse = TRUE)
+  assays(simDR[[vec_elem]])$logcounts = Matrix(assays(simDR[[vec_elem]])$logcounts, sparse = TRUE)
+  fc = calcFC(simDR[[vec_elem]])
+  rowData(simDR[[vec_elem]]) = cbind(rowData(simDR[[vec_elem]]), fc)
+  percent.zero = calcZeroP(simDR[[vec_elem]])
+  rowData(simDR[[vec_elem]]) = cbind(rowData(simDR[[vec_elem]]), percent.zero)
+  saveRDS(simDR, file = 'simDR.simulation1.batch.RData')
+    
+  simulated.data = logcounts(simDR[[vec_elem]])[which(rowSums(logcounts(simDR[[vec_elem]]) != 0) != 0), ]
+  simulated.cell.metadata = colData(simDR[[vec_elem]])
+  simulated.gene.metadata = rowData(simDR[[vec_elem]])[rownames(simulated.data), ]
+  prob.de = de.prob
+  prior_Alter<-c(1-((1-prob.de)^(1/nrow(simulated.data))),0.01,0.05,0.1, 0.2,0.3,0.4,0.5)
+  prior_Null<- 1-prior_Alter
+  
+  #Calculate priors
+  message('calculating priors....')
+  priors.out = calc_priors(simulated.data, simulated.cell.metadata, simulated.gene.metadata)
+  
+  message('Performing full dose-response Bayesian analysis. This can take several minutes...')
+  bf_1 = bf_01(priors.out$split.simulated, priors.out$m, tau_k_mu, tau_mu, prior_Alter, prior_Null)
+  
+  message('Performing pairwise bayesian analysis. This can take several minutes...')
+  bf_pair_1 = bf_pair(priors.out$split.simulated, bf_1, priors.out$m, tau_k_mu, tau_mu, prior_Alter, prior_Null)
+  
+  message('Performing ANOVA and Kruskal-Wallis tests. This can take several minutes...')
+  anova.kw = runANOVA_KW(simulated.data, simulated.cell.metadata)
+    
+  message('Running pair-wise Wilcox Rank Sum test. This can take several minutes...')
+  wrs.out = runWRS(simulated.data, simulated.cell.metadata)
+  wrs.out = wrs.out[,-1]
+    
+  message('Running LRT test. This can take several minutes...')
+  LRT = runLRT(priors.out$split.simulated)
+    
+  message('Running MAST test. This can take several minutes...')
+  MAST = runMAST(simDR[[vec_elem]])
+    
+  message('finalize')
+  bf_test = list(prior = priors.out$priors, bf_1 = bf_1, bf_pair = bf_pair_1, anova.kw = anova.kw, wrs = wrs.out, LRT = LRT, MAST = MAST)
+  stat.out[[vec_elem]] = bf_test
+  saveRDS(stat.out, file = 'statout.simulation1.batch.RData')
+  write(simNo, file = 'simNo.txt', append = TRUE)
+}
+```
+
+
+__OLD VERSION__
+```{r}
+set.seed = 204
+for (ct in unique(splat.long$cell)[1:2]) {
+  #Estimate median parameters from parameter estimates
+  param.medians = splat.long %>%
+    group_by(cell, variable) %>%
+    summarize(median = median(value)) %>%
+    filter(cell == ct) %>%
+    spread(variable, median)
+  
+  for (de.prob in de.probability){
+    vec_elem = paste(ct, de.prob)
+    message(vec_elem)
+    
+    params = newSplatParams()
+
+    params@mean.rate = param.medians$mean.rate
+    params@mean.shape = param.medians$mean.shape
+    params@lib.loc = param.medians$lib.loc
+    params@lib.scale = param.medians$lib.scale
+    params@out.prob = param.medians$out.prob
+    params@out.facLoc = param.medians$out.facLoc
+    params@out.facScale = param.medians$out.facScale
+    params@bcv.common = param.medians$bcv.common
+    params@bcv.df = param.medians$bcv.df
+    params@dropout.mid = param.medians$dropout.mid
+    params@dropout.shape = param.medians$dropout.shape
+    params@de.prob = de.prob
+    params@de.facLoc = param.medians$out.facLoc
+    params@de.facScale = 0.8
+    dose.names = c(0, 0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30)
+    params@nBatches = 1
+    params@nCells = 500 * length(dose.names)
+    params@nGenes = 500
+    dose.prob = rep(1/9, length(dose.names))
+    simDR[[vec_elem]] = splatSimulateDR(params, method = 'doseresp', dose.names = dose.names, dose.prob = dose.prob, verbose = FALSE)
+    assays(simDR[[vec_elem]])$BatchCellMeans = NULL
+	  assays(simDR[[vec_elem]])$BaseCellMeans = NULL
+	  assays(simDR[[vec_elem]])$BCV = NULL
+	  assays(simDR[[vec_elem]])$CellMeans = NULL
+	  assays(simDR[[vec_elem]])$TrueCounts = NULL	
+	  assays(simDR[[vec_elem]])$counts = Matrix(assays(simDR[[vec_elem]])$counts, sparse = TRUE)
+	  assays(simDR[[vec_elem]])$logcounts = Matrix(assays(simDR[[vec_elem]])$logcounts, sparse = TRUE)
+	  fc = calcFC(simDR[[vec_elem]])
+	  rowData(simDR[[vec_elem]]) = cbind(rowData(simDR[[vec_elem]]), fc)
+	  percent.zero = calcZeroP(simDR[[vec_elem]])
+	  rowData(simDR[[vec_elem]]) = cbind(rowData(simDR[[vec_elem]]), percent.zero)
+    saveRDS(simDR, file = 'simDR.simulation1.batch.RData')
+    
+    simulated.data = logcounts(simDR[[vec_elem]])[which(rowSums(logcounts(simDR[[vec_elem]]) != 0) != 0), ]
+    simulated.cell.metadata = colData(simDR[[vec_elem]])
+    simulated.gene.metadata = rowData(simDR[[vec_elem]])[rownames(simulated.data), ]
+    prob.de = de.prob
+    prior_Alter<-c(1-((1-prob.de)^(1/nrow(simulated.data))),0.01,0.05,0.1, 0.2,0.3,0.4,0.5)
+    prior_Null<- 1-prior_Alter
+    
+    #Calculate priors
+    message('calculating priors....')
+    priors.out = calc_priors(simulated.data, simulated.cell.metadata, simulated.gene.metadata)
+    
+    message('Performing full dose-response Bayesian analysis. This can take several minutes...')
+    bf_1 = bf_01(priors.out$split.simulated, priors.out$m, tau_k_mu, tau_mu, prior_Alter, prior_Null)
+    
+    message('Performing pairwise bayesian analysis. This can take several minutes...')
+    bf_pair_1 = bf_pair(priors.out$split.simulated, bf_1, priors.out$m, tau_k_mu, tau_mu, prior_Alter, prior_Null)
+    
+    message('Performing ANOVA and Kruskal-Wallis tests. This can take several minutes...')
+    anova.kw = runANOVA_KW(simulated.data, simulated.cell.metadata)
+    
+    message('Running pair-wise Wilcox Rank Sum test. This can take several minutes...')
+    wrs.out = runWRS(simulated.data, simulated.cell.metadata)
+    wrs.out = wrs.out[,-1]
+    
+    message('Running LRT test. This can take several minutes...')
+    LRT = runLRT(priors.out$split.simulated)
+    
+    message('Running MAST test. This can take several minutes...')
+    MAST = runMAST(simDR[[vec_elem]])
+    
+    message('finalize')
+    bf_test = list(prior = priors.out$priors, bf_1 = bf_1, bf_pair = bf_pair_1, anova.kw = anova.kw, wrs = wrs.out, LRT = LRT, MAST = MAST)
+    stat.out[[vec_elem]] = bf_test
+    saveRDS(stat.out, file = 'statout.simulation1.batch.RData')
+  }
+}
+```
+
+
+```{r}
+confusion.df = data.frame(matrix(ncol = 6, nrow = 0))
+colnames(confusion.df) = c('dataset', 'test', 'type', 'num.Prediction', 'num.Reference', 'num.Freq')
+for (test in names(stat.out)){
+  gene.meta = rowData(simDR[[test]][rownames(stat.out[[test]]$bf_1),])
+  True = as.factor(ifelse(gene.meta$DE_idx == 1, 'Negative', 'Positive'))
+  True.bf = as.factor(ifelse(stat.out[[test]]$bf_1$exp_bf > 1/30, 'Negative', 'Positive'))
+  True.anova = as.factor(ifelse(stat.out[[test]]$anova.kw$anova.fdr > 0.05, 'Negative', 'Positive'))
+  True.kw = as.factor(ifelse(stat.out[[test]]$anova.kw$KW.fdr > 0.05, 'Negative', 'Positive'))
+  True.wrs = as.factor(ifelse(apply(stat.out[[test]]$wrs[,grepl('fdr', colnames(stat.out[[test]]$wrs))], 1, FUN=min) > 0.05, 'Negative', 'Positive'))
+  True.wrs[is.na(True.wrs)] = 'Negative'
+  True.mast = as.factor(ifelse(apply(stat.out[[test]]$MAST[rownames(stat.out[[test]]$bf_1), grepl('fdr', colnames(stat.out[[test]]$MAST))], 1, FUN=min) > 0.05, 'Negative', 'Positive'))
+  
+  df = data.frame(real = True, bf = True.bf, anova = True.anova, kw = True.kw, wrs = True.wrs, mast = True.mast)
+  rownames(df) = rownames(stat.out[[test]]$bf_1)
+  
+  bf = caret::confusionMatrix(df$bf, df$real)
+  confusion.df = rbind(confusion.df, data.frame(dataset = substring(test, 1, 60),
+                                                test = rep('BF', 4),
+                                                type = c('TN', 'FP','FN', 'TP'),
+                                                bf$table
+                                                ))
+  
+  anova = caret::confusionMatrix(df$anova, df$real)
+  confusion.df = rbind(confusion.df, data.frame(dataset = substring(test, 1, 60),
+                                                test = rep('ANOVA', 4),
+                                                type = c('TN', 'FP','FN', 'TP'),
+                                                anova$table
+                                                ))
+  
+  kw = caret::confusionMatrix(df$kw, df$real)
+  confusion.df = rbind(confusion.df, data.frame(dataset = substring(test, 1, 60),
+                                                test = rep('KW', 4),
+                                                type = c('TN', 'FP','FN', 'TP'),
+                                                kw$table
+                                                ))
+  
+  wrs = caret::confusionMatrix(df$wrs, df$real)
+  confusion.df = rbind(confusion.df, data.frame(dataset = substring(test, 1, 60),
+                                                test = rep('wrs', 4),
+                                                type = c('TN', 'FP','FN', 'TP'),
+                                                wrs$table
+                                                ))
+  
+  mast = caret::confusionMatrix(df$mast, df$real)
+  confusion.df = rbind(confusion.df, data.frame(dataset = substring(test, 1, 60),
+                                                test = rep('mast', 4),
+                                                type = c('TN', 'FP','FN', 'TP'),
+                                                mast$table
+                                                ))
+   
+  
+}
+```
+
+
+```{r fig.width = 14, fig.height = 6}
+ggplot(data = confusion.df, aes(fill = type, y = Freq, x = factor(test))) +
+  geom_text(aes(label = Freq), 
+            position = position_dodge(width = 1), 
+            size = 3, vjust = -0.5) +
+  geom_bar(position = "dodge", stat = "identity", color = 'black') +
+  xlab("Method") + ylab("Confusion Matrix Values") +
+  facet_wrap(~dataset) +
+  theme_bw()
+```
+
+
+```{r}
+FN = rownames(df[which(df$real == 'Positive' & df$bf == 'Negative'), ])
+TP = rownames(df[which(df$real == 'Positive' & df$bf != 'Negative'), ])
+
+fn.genes = data.frame(rowData(simDR.list[[4]])[FN,])
+check = data.frame(dataset = 'FN', Means = log(fn.genes$GeneMean,2), Model = fn.genes$Model, DE_idx = fn.genes$DE_idx)
+tp.genes = data.frame(rowData(simDR.list[[4]])[TP,])
+check = rbind(check, data.frame(dataset = 'TP', Means = log(tp.genes$GeneMean,2), Model = tp.genes$Model, DE_idx = tp.genes$DE_idx))
+
+ggplot(data = check, aes(x = dataset, y = Means)) +
+  geom_violin() + 
+  geom_jitter(shape=16, position=position_jitter(0.2)) +
+  theme_bw()
+
+ggplot(data = check, aes(x = dataset, y = Means)) +
+  facet_wrap(~Model) +
+  geom_violin() + 
+  geom_jitter(shape=16, position=position_jitter(0.2)) +
+  theme_bw()
+
+ggplot(data = check, aes(x = dataset, y = DE_idx)) +
+  geom_violin() + 
+  geom_jitter(shape=16, position=position_jitter(0.2)) +
+  theme_bw()
+
+```
+
+
+
+
+
+
+
+```{r}
+calc_priors = function(simulated.data, simulated.cell.metadata, simulated.gene.metadata){
+  data.list = list()
+  priors = data.frame(matrix(NA, nrow = 0, ncol = 5))
+  m = vector()
+  colnames(priors) = c('dose', 'sigma_mean', 'sigma_var', 'omega_mean', 'omega_var')
+  
+  for (dose in sort(unique(simulated.cell.metadata$Dose))){
+    data.list[[dose]] = simulated.data[,which(simulated.cell.metadata$Dose == dose)]
+    
+    m[dose]<-mean(rowMeans(replace(data.list[[dose]], data.list[[dose]] == 0, NA), na.rm = TRUE),na.rm = TRUE)
+    
+    sigma_mean = mean(rowVars(replace(as.matrix(data.list[[dose]]), as.matrix(data.list[[dose]]) == 0, NA), na.rm = TRUE), na.rm = TRUE)
+    sigma_var = var(rowVars(replace(as.matrix(data.list[[dose]]), as.matrix(data.list[[dose]]) == 0, NA), na.rm = TRUE),na.rm = TRUE)
+    #Dose group specific mean dropout proportions for all genes
+    omega_mean = mean(apply(as.matrix(data.list[[dose]]), 1, function(x) length(which(x==0))/length(x)))
+    omega_var = var(apply(as.matrix(data.list[[dose]]), 1, function(x) length(which(x==0))/length(x)))
+    #priors = rbind(priors, 
+    #      c(dose, sigma_mean, sigma_var, omega_mean, omega_var))
+    priors[dose,] = c(dose, sigma_mean, sigma_var, omega_mean, omega_var)
+  }
+  return(list(split.simulated = data.list, priors = priors, m = m))
+}
+
+bf_01 = function(data.list, m, tau_k_mu, tau_mu, prior_Alter, prior_Null){
+  #bf_multiple_01<-rep(list(list()), nrow(data.list[["0"]]))
+  bf_multiple_01 = list()
+  for(j in rownames(data.list[["0"]])){
+    bf_multiple_01[[j]]<-Bayes_factor_multiple(
+                           Y = list(Y_1=as.matrix(data.list[["0"]][j,]), 
+                           Y_2=as.matrix(data.list[["0.01"]][j,]),
+                           Y_3=as.matrix(data.list[["0.03"]][j,]),
+                           Y_4=as.matrix(data.list[["0.1"]][j,]),
+                           Y_5=as.matrix(data.list[["0.3"]][j,]),
+                           Y_6=as.matrix(data.list[["1"]][j,]),
+                           Y_7=as.matrix(data.list[["3"]][j,]),
+                           Y_8=as.matrix(data.list[["10"]][j,]),
+                           Y_9=as.matrix(data.list[["30"]][j,])),
+                           m_0=mean(m),m=m,K=9,
+                           tau_k_mu =tau_k_mu,tau_mu=tau_mu[2], 
+                           b_sigma=1,a_sigma=6,a_w=8,b_w=2,
+                           prior_alt =prior_Alter[4],
+                           prior_null = prior_Null[4])
+  }
+  bf_multiple_01 = do.call(rbind, lapply(bf_multiple_01, as.data.frame))
+  bf_multiple_01$omega = bf_multiple_01$l_D1 + bf_multiple_01$l_D2 + bf_multiple_01$l_D3 + bf_multiple_01$l_D4 + bf_multiple_01$l_D4
+  bf_multiple_01$exp_bf = exp(bf_multiple_01$l_Bayes_factor_01)
+  
+  return(bf_multiple_01)
+}
+
+bf_pair = function(data.list, bf_1, m, tau_k_mu, tau_mu, prior_Alter, prior_Null){
+  #significant.genes = rownames(bf_1[which(bf_1$bf.t.0.1 == 'Positive'),])
+  significant.genes = rownames(bf_1)
+  bf_actual_01 = list()
+  for (dose in names(data.list)[-1]){
+    message(paste("performing pair-wise comparisons for dose ", dose, sep = ''))
+    bf_actual_01.genes = list()
+    for (g in significant.genes){
+      bf_actual_01.genes[[g]] = Bayes_factor_multiple(Y = list(
+          Y_1=as.matrix(data.list[["0"]][g,]), 
+          Y_2=as.matrix(data.list[[dose]][g,])
+        ),
+        m_0=mean(m["0"] + m[dose]), 
+        m=c(m["0"],m[dose]), 
+        K=2,
+        tau_k_mu =c(tau_k_mu["0"], 
+        tau_k_mu[dose]),
+        tau_mu=tau_mu[2], 
+        b_sigma=1,
+        a_sigma=6,
+        a_w=8,
+        b_w=2,
+        prior_alt =prior_Alter[4],
+        prior_null = prior_Null[4]
+      )
+      bf_actual_01.genes[[g]]$Dose = dose
+      bf_actual_01.genes[[g]]$Gene = g
+    }
+    bf_actual_01[[dose]] = do.call(rbind, lapply(bf_actual_01.genes, as.data.frame))
+  }
+  bf_pair = do.call(rbind, lapply(bf_actual_01, as.data.frame))
+  bf_pair$exp_bf = exp(bf_pair$l_Bayes_factor_01)
+  return(bf_pair)
+}
+
+runANOVA_KW = function(logcounts, cell.meta){
+  simulated.data.transposed = data.frame(t(as.matrix(logcounts)))
+  simulated.data.transposed$Dose = as.numeric(cell.meta$Dose)
+  kw.out = KW_test(simulated.data.transposed)
+  kw.out = p.adjust(kw.out, 'fdr')
+  anova.out = anova_test(simulated.data.transposed)
+  anova.out = p.adjust(anova.out, 'fdr')
+  
+  ANOVA_KW.df = data.frame(KW.fdr = kw.out, anova.fdr = anova.out)
+  rownames(ANOVA_KW.df) = colnames(simulated.data.transposed)[1:length(anova.out)]
+  return(ANOVA_KW.df)
+}
+
+runWRS = function(logcounts, cell.meta){
+  #simulated.data.transposed = data.frame(t(as.matrix(logcounts)))
+  #simulated.data.transposed$Dose = as.numeric(cell.meta$Dose)
+  WRS = data.frame(Gene = rownames(logcounts))
+  rownames(WRS) = WRS$Gene
+  for (dose in sort(unique(cell.meta$Dose))[-1]){
+    message(paste('Working on dose ', dose, sep = ''))
+    WRS[,paste('wrs.p.', dose, sep = '')] = NA
+    
+    for (g in rownames(logcounts)){
+      WRS[g, paste('wrs.p.', dose, sep = '')] = wilcox.test(logcounts[g, which(cell.meta$Dose == 0)],
+                                                            logcounts[g, which(cell.meta$Dose == dose)])$p.value
+    }
+    WRS[,paste('wrs.fdr.', dose, sep = '')] = p.adjust(WRS[ , paste('wrs.p.', dose, sep = '')], method = 'fdr')
+  }
+  message('Wilcox Rank Sum test complete')
+  return(WRS)
+}
+
+runLRT = function(data.list){
+  for (dose in names(data.list)){
+    data.list[[dose]] = as.matrix(data.list[[dose]])
+  }
+  #LRT_mult<-rep(list(list()),nrow(data[["0"]]))
+  LRT_mult = list()
+  data_ind = lapply(data.list, function(x) ifelse(x > 0, 1, 0))
+  for(g in 1: nrow(data.list[["0"]])){
+    gene = rownames(data.list[["0"]])[g]
+    LRT_mult[[gene]]<-LRT_multiple_groups(data = list(data.list[["0"]][g,][data_ind[["0"]][g,] > 0],
+                                    data.list[["0.01"]][g,][data_ind[["0.01"]][g,] > 0],
+                                    data.list[["0.03"]][g,][data_ind[["0.03"]][g,] > 0],
+                                    data.list[["0.1"]][g,][data_ind[["0.1"]][g,] > 0],
+                                    data.list[["0.3"]][g,][data_ind[["0.3"]][g,] > 0],
+                                    data.list[["1"]][g,][data_ind[["1"]][g,] > 0],
+                                    data.list[["3"]][g,][data_ind[["3"]][g,] > 0],
+                                    data.list[["10"]][g,][data_ind[["10"]][g,] > 0],
+                                    data.list[["30"]][g,][data_ind[["30"]][g,] > 0]),
+                        data_ind = list(data_ind[["0"]][g,],
+                                    data_ind[["0.01"]][g,],
+                                    data_ind[["0.03"]][g,],
+                                    data_ind[["0.1"]][g,],
+                                    data_ind[["0.3"]][g,],
+                                    data_ind[["1"]][g,],
+                                    data_ind[["3"]][g,],
+                                    data_ind[["10"]][g,],
+                                    data_ind[["30"]][g,]))
+  }
+  LRT_mult_p_value = sapply(LRT_mult,function(x) x[2,3])
+  LRT_mult_p_value_adj = p.adjust(LRT_mult_p_value, method = "fdr")
+  LRT.out = data.frame(pval = LRT_mult_p_value, pval.fdr = LRT_mult_p_value_adj)
+  rownames(LRT.out) = names(LRT_mult_p_value_adj)
+  return(LRT.out)
+}
+
+```
+
+
+```{r}
+calcFC = function(sim){
+  dose_vec = sort(unique(colData(sim)$Dose))
+  m0 = rowMeans(as.matrix(logcounts(sim)[,which(colData(sim)$Dose == 0)]))
+  fc = list()
+  for (dose in dose_vec[-1]){
+    temp.means = rowMeans(as.matrix(logcounts(sim)[,which(colData(sim)$Dose == dose)]))
+    fc[[dose]] = temp.means-m0
+  }
+  fc.out = do.call(cbind, lapply(fc, as.data.frame))
+  colnames(fc.out) = paste0('calculatedFC',names(fc))
+  return(fc.out)
+}
+
+calcZeroP = function(sim){
+  dose_vec = sort(unique(colData(sim)$Dose))
+  pz = list()
+  for (dose in dose_vec){
+    temp.df = as.matrix(logcounts(sim)[,which(colData(sim)$Dose == dose)])
+    pz[[dose]] = apply(temp.df, 1, function(x) sum(x == 0)/length(x))
+  }
+  pz.out = do.call(cbind, lapply(pz, as.data.frame))
+  colnames(pz.out) = paste0('percent.zero',names(pz))
+  return(pz.out)
+}
+
+calcZeroP(ds)
+```
+
+
+
+```{r}
+for (test in names(simDR.list)){
+  message(test)
+  simDR = simDR.list[[test]]
+  simulated.data = logcounts(simDR)[which(rowSums(logcounts(simDR) != 0) != 0), ]
+  simulated.cell.metadata = colData(simDR)
+  simulated.gene.metadata = rowData(simDR)[rownames(simulated.data), ]
+  prop.de = length(simulated.gene.metadata$DE_idx[which(simulated.gene.metadata$DE_idx !=1)])/length(simulated.gene.metadata$DE_idx)
+  prior_Alter<-c(1-((1-prop.de)^(1/nrow(simulated.data))),0.01,0.05,0.1, 0.2,0.3,0.4,0.5)
+  prior_Null<- 1-prior_Alter
+  
+  #Calculate priors
+  message('calculating priors....')
+  priors.out = calc_priors(simulated.data, simulated.cell.metadata, simulated.gene.metadata)
+  
+  message('Performing full dose-response Bayesian analysis. This can take several minutes...')
+  bf_1 = bf_01(priors.out$split.simulated, priors.out$m, tau_k_mu, tau_mu, prior_Alter, prior_Null)
+  
+  message('Performing pairwise bayesian analysis. This can take several minutes...')
+  bf_pair_1 = bf_pair(priors.out$split.simulated, bf_1, priors.out$m, tau_k_mu, tau_mu, prior_Alter, prior_Null)
+  
+  message('Performing ANOVA and Kruskal-Wallis tests. This can take several minutes...')
+  anova.kw = runANOVA_KW(simulated.data, simulated.cell.metadata)
+  
+  message('Running pair-wise Wilcox Rank Sum test. This can take several minutes...')
+  wrs.out = runWRS(simulated.data, simulated.cell.metadata)
+  wrs.out = wrs.out[,-1]
+  
+  message('Running LRT test. This can take several minutes...')
+  LRT = runLRT(priors.out$split.simulated)
+  
+  message('finalize')
+  bf_test = list(prior = priors.out$priors, bf_1 = bf_1, bf_pair = bf_pair_1, anova.kw = anova.kw, wrs = wrs.out, LRT = LRT)
+  stat.out[[test]] = bf_test
+}
+```
+
+
+```{r}
+runMAST = function(sce){
+  scaRaw = FromMatrix(as.matrix(logcounts(sce)),
+                                data.frame(colData(sce)),
+                                data.frame(rowData(sce))
+                      )
+  cdr <-colSums(assay(scaRaw) > 0)
+  colData(scaRaw)$cngeneson = scale(cdr)
+  filterCrit = with(colData(scaRaw),cngeneson > 1)
+  rowData(scaRaw)$symbolid = rownames(rowData(sce))
+  sca = subset(scaRaw,filterCrit)
+  Dose = factor(colData(scaRaw)$Dose)
+  Dose = relevel(Dose,"0")
+  colData(scaRaw)$Dose = Dose
+  zlmDose = zlm(~Dose + cngeneson, scaRaw)
+  
+  summaryDose<-rep(list(list()),times= nlevels(Dose)-1)
+  names(summaryDose)<-levels(Dose)[2:9]
+  for(i in levels(Dose)[2:9])
+  {
+      summaryDose[[i]]<-summary(zlmDose, doLRT=paste0("Dose",i))
+  }
+  
+  summaryDT<-rep(list(data.table()),times=nlevels(Dose)-1)
+  names(summaryDT)<-levels(Dose)[2:9]
+  fcHurdle<-rep(list(data.table()),times=nlevels(Dose)-1)
+  names(fcHurdle)<-levels(Dose)[2:9]
+  fcHurdleSig<-rep(list(data.table()),times=nlevels(Dose)-1)
+  names(fcHurdleSig)<-levels(Dose)[2:9]
+  fcHurdleNonSig<-rep(list(data.table()),times=nlevels(Dose)-1)
+  names(fcHurdleSig)<-levels(Dose)[2:9]
+  TP_dose<-rep(list(data.table()),times=nlevels(Dose)-1)
+  names(TP_dose)<-levels(Dose)[2:9]
+  FP_dose<-rep(list(data.table()),times=nlevels(Dose)-1)
+  names(FP_dose)<-levels(Dose)[2:9]
+  TN_dose<-rep(list(data.table()),times=nlevels(Dose)-1)
+  names(TN_dose)<-levels(Dose)[2:9]
+  FN_dose<-rep(list(data.table()),times=nlevels(Dose)-1)
+  names(FN_dose)<-levels(Dose)[2:9]
+  
+  for(i in levels(Dose)[2:9]){
+    summaryDT[[i]] <-summaryDose[[i]]$datatable
+    fcHurdle[[i]]<-summaryDT[[i]][contrast== paste0("Dose",i) & component=='H',.(primerid, `Pr(>Chisq)`)] #logFC coefficients
+    fcHurdle[[i]][,fdr:=p.adjust(`Pr(>Chisq)`, 'fdr')]
+    fcHurdleSig[[i]]<- fcHurdle[[i]][fdr<.05 ]
+    setorder(fcHurdleSig[[i]], fdr)
+    fcHurdleNonSig[[i]]<- fcHurdle[[i]][fdr >.05| fdr == 0.05]
+    setorder(fcHurdleNonSig[[i]], fdr)
+  }
+  
+  mast.out = do.call(cbind, lapply(fcHurdle, data.frame))
+  
+  if (sum(transform(mast.out[,grepl('primer', colnames(mast.out))], same = apply(mast.out[,grepl('primer', colnames(mast.out))], 1, function(x) length(unique(x)) == 1))$same == FALSE) == 0) {
+    m = mast.out[,grepl('fdr', colnames(mast.out))]
+    rownames(m) = mast.out[,1]
+  } else {
+    message('ERROR!!!!!!')
+  }
+  return(m)
+}
+```
+
+
+```{r}
+sig<-(union(fcHurdleSig[["0.01"]]$primerid,union(fcHurdleSig[["0.03"]]$primerid,union(fcHurdleSig[["0.1"]]$primerid,union(fcHurdleSig[["0.3"]]$primerid,union(fcHurdleSig[["1"]]$primerid,union(fcHurdleSig[["3"]]$primerid,union(fcHurdleSig[["10"]]$primerid,fcHurdleSig[["30"]]$primerid))))))))
+true_dec<-ifelse(simulated.gene.metadata$Model=="Unchanged","Negative","Positive")
+pred_dec_MAST_comb<-ifelse(rownames(simulated.gene.metadata)%in%sig == TRUE,"Positive","Negative")
+caret::confusionMatrix(factor(pred_dec_MAST_comb,levels=c("Positive","Negative")),factor(true_dec,levels=c("Positive","Negative")))
+```
+
