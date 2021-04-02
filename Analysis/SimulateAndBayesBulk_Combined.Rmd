@@ -14,10 +14,12 @@ library(caret, quietly = TRUE)
 library(Matrix, quietly = TRUE)
 library(data.table, quietly = TRUE)
 library(MAST, quietly = TRUE)
+#library(splattDR, quietly = TRUE)
+#library(snDR???????)
 ```
 
+These need to be converted to R packages that can be installed via devtools.
 ```{r}
-
 path1 = list.files('C://Users/15177/OneDrive - Michigan State University/Documents/Projects/Prj161-snSeq-Mm_TCDD_DR_Sept2019/snSeq-DGE/R', full.names = TRUE)
 path2 = list.files('C://Users/15177/OneDrive - Michigan State University/Documents/CodeSnippets/splatter/R', full.names = TRUE)
 #path1 = list.files('R/', full.names = TRUE)
@@ -27,7 +29,7 @@ sapply(path2, source)
 #simDR = readRDS('simDR.simulation1.batch.RData')
 ```
 
-[Splat](www.google.com) parameters were estimated using real single-nuclei RNA sequencing data for each individual cell types (cluster) and dose. The list of is collapsed into a matrix from which parameters used. 
+## [Splat](www.google.com) parameters were estimated using real single-nuclei RNA sequencing data for each individual cell types (cluster) and dose. The list of is collapsed into a matrix from which parameters used. 
 ```{r}
 params.list = readRDS('C://Users//15177//Downloads//dr.param.list.RData')
 #params.list = readRDS('~/SNSEQDATA_FINAL/dr.param.list.RData')
@@ -42,34 +44,47 @@ splat.param = splat.param %>% separate(cell.dose, c("cell","dose"), sep = '_')
 splat.long = reshape2::melt(splat.param[,c('nCells', 'cell', 'dose','mean.rate', 'mean.shape', 'out.prob', 'out.facLoc', 'out.facScale', 'bcv.common', 'bcv.df', 'dropout.mid', 'dropout.shape', 'lib.loc', 'lib.scale')], id.var = c('cell','dose'))
 ```
 
-Initialize the simulation conditions
+## Initialize the simulation conditions
+* Vary starting parameters estimated from each cell type identified in a real dataset.
+* Testing differential expression probability of 10, 25, or 50%
+* For one cell type, simulation will be repeated 10 times using a different seed
+* TODO: Vary dropout rate
 ```{r}
 dose.names = c(0, 0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30)
 set.seed = 343
 sim.settings.list= list()
 i = 0
-for (ct in unique(splat.long$cell)){
-  for (de.prob in c(0.1, 0.25, 0.5, 0.75)){
+celltypes = unique(splat.long$cell)
+
+for (ct in celltypes){
+  for (de.prob in c(0.1, 0.25, 0.5)){
     for (true.count in 1:2){
-      for (iter in 1:10){
+      dose.prob = rep(param.medians$nCells, length(dose.names))
+      if (true.count == 1 & ct == celltypes[5] & de.prob == 0.5){
+        repeats = c(1:10)
+        dose.prob = rep(param.medians$nCells, length(dose.names))
+      } else {
+        repeats = c(1)
+        dose.prob = splat.long %>% group_by(cell, variable) %>% filter(cell == ct & variable == 'nCells') %>% arrange(dose) %>% pull(value)
+      }
+      for (iter in repeats){
+        print(paste0(ct, ' ', de.prob, ' ', true.count, ' ', iter))
         i = i + 1
         simName = paste0('Simulation',i)
         seed = sample(1:1000, 1)
 
+        # Obtain parameters from splat estimates
         param.medians = splat.long %>%
         group_by(cell, variable) %>%
-        summarize(median = median(value)) %>%
+        summarize(median = median(value), .groups = 'drop') %>%
         filter(cell == ct) %>%
         spread(variable, median)
         
-        if (true.count == 2){
-          dose.prob = splat.long %>% group_by(cell, variable) %>% filter(cell == ct & variable == 'nCells') %>% arrange(dose) %>% pull(value)
-        } else {
-          dose.prob = rep(param.medians$nCells, length(dose.names))
-        }
+        # calculate total cells and cell proportions by dose
         tot.Cells = sum(dose.prob)
         prop.Cells = dose.prob/sum(dose.prob)
         
+        # Create new splat parameter object with specified parameters
         params = newSplatParams()
         params@mean.rate = param.medians$mean.rate
         params@mean.shape = param.medians$mean.shape
@@ -86,10 +101,10 @@ for (ct in unique(splat.long$cell)){
         params@de.facLoc = param.medians$out.facLoc
         params@nBatches = 1
         params@nCells = tot.Cells
-        params@nGenes = 500
+        params@nGenes = 10000
         params@seed = seed
         
-        #Set and record seed
+        # Save seed, cell proportions, and splatParam object to list
         sim.settings.list[[simName]]$seed = seed
         sim.settings.list[[simName]]$dose.prob = prop.Cells
         sim.settings.list[[simName]]$param = params
@@ -97,6 +112,7 @@ for (ct in unique(splat.long$cell)){
     }
   }
 }
+#saveRDS(sim.settings.list, file = 'sim.settings.list.RData')
 ```
 
 
@@ -115,27 +131,20 @@ b_w = b_t_w = 0.2
 ```
 
 
-
 ```{r}
 stat.out = list()
 simDR = list()
 for (simNo in names(sim.settings.list)) {
   
   vec_elem = simNo
-  message(vec_elem)
+  message(paste0('Working on: ', vec_elem))
   
   set.seed = sim.settings.list[[simNo]]$seed
   params = sim.settings.list[[simNo]]$param
   dose.prob = sim.settings.list[[simNo]]$dose.prob
   
   simDR[[vec_elem]] = splatSimulateDR(params, method = 'doseresp', dose.names = dose.names, dose.prob = dose.prob, verbose = FALSE)
-  assays(simDR[[vec_elem]])$BatchCellMeans = NULL
-  assays(simDR[[vec_elem]])$BaseCellMeans = NULL
-  assays(simDR[[vec_elem]])$BCV = NULL
-  assays(simDR[[vec_elem]])$CellMeans = NULL
-  assays(simDR[[vec_elem]])$TrueCounts = NULL	
-  assays(simDR[[vec_elem]])$counts = Matrix(assays(simDR[[vec_elem]])$counts, sparse = TRUE)
-  assays(simDR[[vec_elem]])$logcounts = Matrix(assays(simDR[[vec_elem]])$logcounts, sparse = TRUE)
+  simDR[[vec_elem]] = clean_sce(simDR[[vec_elem]])
   fc = calcFC(simDR[[vec_elem]])
   rowData(simDR[[vec_elem]]) = cbind(rowData(simDR[[vec_elem]]), fc)
   percent.zero = calcZeroP(simDR[[vec_elem]])
@@ -176,99 +185,9 @@ for (simNo in names(sim.settings.list)) {
   bf_test = list(prior = priors.out$priors, bf_1 = bf_1, bf_pair = bf_pair_1, anova.kw = anova.kw, wrs = wrs.out, LRT = LRT, MAST = MAST)
   stat.out[[vec_elem]] = bf_test
   saveRDS(stat.out, file = 'statout.simulation1.batch.RData')
-  write(simNo, file = 'simNo.txt', append = TRUE)
+  write(paste0(simNo, ': ', date()), file = 'sim.successes.log', append = TRUE)
 }
 ```
-
-
-__OLD VERSION__
-```{r}
-set.seed = 204
-for (ct in unique(splat.long$cell)[1:2]) {
-  #Estimate median parameters from parameter estimates
-  param.medians = splat.long %>%
-    group_by(cell, variable) %>%
-    summarize(median = median(value)) %>%
-    filter(cell == ct) %>%
-    spread(variable, median)
-  
-  for (de.prob in de.probability){
-    vec_elem = paste(ct, de.prob)
-    message(vec_elem)
-    
-    params = newSplatParams()
-
-    params@mean.rate = param.medians$mean.rate
-    params@mean.shape = param.medians$mean.shape
-    params@lib.loc = param.medians$lib.loc
-    params@lib.scale = param.medians$lib.scale
-    params@out.prob = param.medians$out.prob
-    params@out.facLoc = param.medians$out.facLoc
-    params@out.facScale = param.medians$out.facScale
-    params@bcv.common = param.medians$bcv.common
-    params@bcv.df = param.medians$bcv.df
-    params@dropout.mid = param.medians$dropout.mid
-    params@dropout.shape = param.medians$dropout.shape
-    params@de.prob = de.prob
-    params@de.facLoc = param.medians$out.facLoc
-    params@de.facScale = 0.8
-    dose.names = c(0, 0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30)
-    params@nBatches = 1
-    params@nCells = 500 * length(dose.names)
-    params@nGenes = 500
-    dose.prob = rep(1/9, length(dose.names))
-    simDR[[vec_elem]] = splatSimulateDR(params, method = 'doseresp', dose.names = dose.names, dose.prob = dose.prob, verbose = FALSE)
-    assays(simDR[[vec_elem]])$BatchCellMeans = NULL
-	  assays(simDR[[vec_elem]])$BaseCellMeans = NULL
-	  assays(simDR[[vec_elem]])$BCV = NULL
-	  assays(simDR[[vec_elem]])$CellMeans = NULL
-	  assays(simDR[[vec_elem]])$TrueCounts = NULL	
-	  assays(simDR[[vec_elem]])$counts = Matrix(assays(simDR[[vec_elem]])$counts, sparse = TRUE)
-	  assays(simDR[[vec_elem]])$logcounts = Matrix(assays(simDR[[vec_elem]])$logcounts, sparse = TRUE)
-	  fc = calcFC(simDR[[vec_elem]])
-	  rowData(simDR[[vec_elem]]) = cbind(rowData(simDR[[vec_elem]]), fc)
-	  percent.zero = calcZeroP(simDR[[vec_elem]])
-	  rowData(simDR[[vec_elem]]) = cbind(rowData(simDR[[vec_elem]]), percent.zero)
-    saveRDS(simDR, file = 'simDR.simulation1.batch.RData')
-    
-    simulated.data = logcounts(simDR[[vec_elem]])[which(rowSums(logcounts(simDR[[vec_elem]]) != 0) != 0), ]
-    simulated.cell.metadata = colData(simDR[[vec_elem]])
-    simulated.gene.metadata = rowData(simDR[[vec_elem]])[rownames(simulated.data), ]
-    prob.de = de.prob
-    prior_Alter<-c(1-((1-prob.de)^(1/nrow(simulated.data))),0.01,0.05,0.1, 0.2,0.3,0.4,0.5)
-    prior_Null<- 1-prior_Alter
-    
-    #Calculate priors
-    message('calculating priors....')
-    priors.out = calc_priors(simulated.data, simulated.cell.metadata, simulated.gene.metadata)
-    
-    message('Performing full dose-response Bayesian analysis. This can take several minutes...')
-    bf_1 = bf_01(priors.out$split.simulated, priors.out$m, tau_k_mu, tau_mu, prior_Alter, prior_Null)
-    
-    message('Performing pairwise bayesian analysis. This can take several minutes...')
-    bf_pair_1 = bf_pair(priors.out$split.simulated, bf_1, priors.out$m, tau_k_mu, tau_mu, prior_Alter, prior_Null)
-    
-    message('Performing ANOVA and Kruskal-Wallis tests. This can take several minutes...')
-    anova.kw = runANOVA_KW(simulated.data, simulated.cell.metadata)
-    
-    message('Running pair-wise Wilcox Rank Sum test. This can take several minutes...')
-    wrs.out = runWRS(simulated.data, simulated.cell.metadata)
-    wrs.out = wrs.out[,-1]
-    
-    message('Running LRT test. This can take several minutes...')
-    LRT = runLRT(priors.out$split.simulated)
-    
-    message('Running MAST test. This can take several minutes...')
-    MAST = runMAST(simDR[[vec_elem]])
-    
-    message('finalize')
-    bf_test = list(prior = priors.out$priors, bf_1 = bf_1, bf_pair = bf_pair_1, anova.kw = anova.kw, wrs = wrs.out, LRT = LRT, MAST = MAST)
-    stat.out[[vec_elem]] = bf_test
-    saveRDS(stat.out, file = 'statout.simulation1.batch.RData')
-  }
-}
-```
-
 
 ```{r}
 confusion.df = data.frame(matrix(ncol = 6, nrow = 0))
@@ -287,35 +206,35 @@ for (test in names(stat.out)){
   rownames(df) = rownames(stat.out[[test]]$bf_1)
   
   bf = caret::confusionMatrix(df$bf, df$real)
-  confusion.df = rbind(confusion.df, data.frame(dataset = substring(test, 1, 60),
+  confusion.df = rbind(confusion.df, data.frame(dataset = test,
                                                 test = rep('BF', 4),
                                                 type = c('TN', 'FP','FN', 'TP'),
                                                 bf$table
                                                 ))
   
   anova = caret::confusionMatrix(df$anova, df$real)
-  confusion.df = rbind(confusion.df, data.frame(dataset = substring(test, 1, 60),
+  confusion.df = rbind(confusion.df, data.frame(dataset = test,
                                                 test = rep('ANOVA', 4),
                                                 type = c('TN', 'FP','FN', 'TP'),
                                                 anova$table
                                                 ))
   
   kw = caret::confusionMatrix(df$kw, df$real)
-  confusion.df = rbind(confusion.df, data.frame(dataset = substring(test, 1, 60),
+  confusion.df = rbind(confusion.df, data.frame(dataset = test,
                                                 test = rep('KW', 4),
                                                 type = c('TN', 'FP','FN', 'TP'),
                                                 kw$table
                                                 ))
   
   wrs = caret::confusionMatrix(df$wrs, df$real)
-  confusion.df = rbind(confusion.df, data.frame(dataset = substring(test, 1, 60),
+  confusion.df = rbind(confusion.df, data.frame(dataset = test,
                                                 test = rep('wrs', 4),
                                                 type = c('TN', 'FP','FN', 'TP'),
                                                 wrs$table
                                                 ))
   
   mast = caret::confusionMatrix(df$mast, df$real)
-  confusion.df = rbind(confusion.df, data.frame(dataset = substring(test, 1, 60),
+  confusion.df = rbind(confusion.df, data.frame(dataset = test,
                                                 test = rep('mast', 4),
                                                 type = c('TN', 'FP','FN', 'TP'),
                                                 mast$table
@@ -324,6 +243,53 @@ for (test in names(stat.out)){
   
 }
 ```
+
+
+
+```{r}
+t = seq(0.001, 1, by = 0.01)
+bf.acc = c()
+bf.thresh = c()
+fp = c()
+fn = c()
+sim = c()
+for (test in names(stat.out)){
+  print(test)
+  for (thresh in t){
+    gene.meta = rowData(simDR[[test]][rownames(stat.out[[test]]$bf_1),])
+    True = as.factor(ifelse(gene.meta$DE_idx == 1, 'Negative', 'Positive'))
+    True.bf = as.factor(ifelse(stat.out[[test]]$bf_1$exp_bf > thresh, 'Negative', 'Positive'))
+    
+    df = data.frame(real = True, bf = True.bf)
+    bf = caret::confusionMatrix(df$bf, df$real)
+    bf.acc = c(bf.acc, bf$overall[1])
+    fp = c(fp, bf$table[2])
+    fn = c(fn, bf$table[3])
+    bf.thresh = c(bf.thresh, log(thresh, 10))
+    sim = c(sim, test)
+  }
+}
+```
+
+
+```{r}
+d = data.frame(sim = sim, acc = bf.acc, thresh = bf.thresh, fn = fn, fp = fp)
+ggplot(data = d, aes(x = thresh, y = fn, color = sim)) +
+  geom_line(size = 2) +
+  theme_bw()
+
+d = data.frame(sim = sim, acc = bf.acc, thresh = bf.thresh, fn = fn, fp = fp)
+ggplot(data = d, aes(x = thresh, y = fp, color = sim)) +
+  geom_line(size = 2) +
+  theme_bw()
+
+d = data.frame(sim = sim, acc = bf.acc, thresh = bf.thresh, fn = fn, fp = fp)
+ggplot(data = d, aes(x = thresh, y = acc, color = sim)) +
+  geom_line(size = 2) +
+  theme_bw()
+```
+
+
 
 
 ```{r fig.width = 14, fig.height = 6}

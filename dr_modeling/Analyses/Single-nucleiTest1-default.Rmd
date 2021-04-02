@@ -13,8 +13,8 @@ models = c("Exp2","Exp3","Exp4","Exp5","Poly2","Lin","Power","Hill")
 ```
 
 ```{r}
-doses = as.character(colData(simDR)$Dose)
-sn.data = assays(simDR)$logcount[2:2,]
+doses = as.character(colData(simDR[[1]])$Dose)
+sn.data = as.matrix(logcounts(simDR[[1]])[1:20,])
 ```
 
 ```{r}

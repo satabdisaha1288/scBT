@@ -238,12 +238,21 @@ runMAST = function(sce){
 }
 
 
+
+
+
+
+#' Calculate empirical Bayes priors
+#' 
+#' Calc....
+#' 
+#' @param sce SingleCellExperiment to calculate priors from
+#' 
+#' @return ddd
+#' 
+#' @importFrom matrixStats rowVars
+
 sceCalcPriors = function(sce){
-  if (class(sce) != "SingleCellExperiment"){
-    message('ERROR: Input is not a SingleCellExperiment. Stopping...')
-    break
-  }
-  
   #Initialize list, tables, and vectors
   data.list = list()
   m = vector()
@@ -251,9 +260,9 @@ sceCalcPriors = function(sce){
   colnames(priors) = c('dose', 'sigma_mean', 'sigma_var', 'omega_mean', 'omega_var')
   
   data = as.matrix(logcounts(sce))
-  cell.metadata = rowData(sce)
-  gene.metadata = colData(sce)
-  dose_vec = sort(unique(gene.metadata$Dose))
+  gene.metadata = rowData(sce)
+  cell.metadata = colData(sce)
+  dose_vec = sort(unique(cell.metadata$Dose))
   
   for (dose in dose_vec){
     data.list[[dose]] = data[,which(cell.metadata$Dose == dose)]
@@ -265,28 +274,35 @@ sceCalcPriors = function(sce){
     #Dose group specific mean dropout proportions for all genes
     omega_mean = mean(apply(as.matrix(data.list[[dose]]), 1, function(x) length(which(x==0))/length(x)))
     omega_var = var(apply(as.matrix(data.list[[dose]]), 1, function(x) length(which(x==0))/length(x)))
-    #priors = rbind(priors, 
-    #      c(dose, sigma_mean, sigma_var, omega_mean, omega_var))
     priors[dose,] = c(dose, sigma_mean, sigma_var, omega_mean, omega_var)
   }
   return(list(split.simulated = data.list, priors = priors, m = m))
 }
 
-bf_01 = function(data.list, m, tau_k_mu, tau_mu, prior_Alter, prior_Null){
-  #bf_multiple_01<-rep(list(list()), nrow(data.list[["0"]]))
+
+#' Calculate empirical Bayes priors
+#' 
+#' Calc....
+#' 
+#' @param data.list list of gene x cell matrics for each dose
+#' @param m
+#' @param tau_k_mu
+#' @param tau_mu
+#' @param prior_Alter
+#' @param prior_Null
+#' 
+#' @return bf_multiple_01
+#' 
+#' @importFrom purrr map
+
+bayesDETest = function(data.list, m, tau_k_mu, tau_mu, prior_Alter, prior_Null){
   bf_multiple_01 = list()
-  for(j in rownames(data.list[["0"]])){
+  for(j in rownames(data.list[[1]])){
+    in.list = data.list %>% map(as.matrix(~.x[j,]))
+    names(in.list) = paste0("Y_", 1:length(in.list))
     bf_multiple_01[[j]]<-Bayes_factor_multiple(
-      Y = list(Y_1=as.matrix(data.list[["0"]][j,]), 
-               Y_2=as.matrix(data.list[["0.01"]][j,]),
-               Y_3=as.matrix(data.list[["0.03"]][j,]),
-               Y_4=as.matrix(data.list[["0.1"]][j,]),
-               Y_5=as.matrix(data.list[["0.3"]][j,]),
-               Y_6=as.matrix(data.list[["1"]][j,]),
-               Y_7=as.matrix(data.list[["3"]][j,]),
-               Y_8=as.matrix(data.list[["10"]][j,]),
-               Y_9=as.matrix(data.list[["30"]][j,])),
-      m_0=mean(m),m=m,K=9,
+      Y = in.list,
+      m_0=mean(m),m=m,K=length(in.list),
       tau_k_mu =tau_k_mu,tau_mu=tau_mu[2], 
       b_sigma=1,a_sigma=6,a_w=8,b_w=2,
       prior_alt =prior_Alter[4],
@@ -297,4 +313,78 @@ bf_01 = function(data.list, m, tau_k_mu, tau_mu, prior_Alter, prior_Null){
   bf_multiple_01$exp_bf = exp(bf_multiple_01$l_Bayes_factor_01)
   
   return(bf_multiple_01)
+}
+
+
+
+
+runANOVA = function(sce){
+  logcounts = data.frame(t(as.matrix(logcounts(sce))))
+  
+  
+  logcounts, cell.meta
+  simulated.data.transposed = data.frame(t(as.matrix(logcounts)))
+  simulated.data.transposed$Dose = as.numeric(cell.meta$Dose)
+  kw.out = KW_test(simulated.data.transposed)
+  kw.out = p.adjust(kw.out, 'fdr')
+  anova.out = anova_test(simulated.data.transposed)
+  anova.out = p.adjust(anova.out, 'fdr')
+  
+  ANOVA_KW.df = data.frame(KW.fdr = kw.out, anova.fdr = anova.out)
+  rownames(ANOVA_KW.df) = colnames(simulated.data.transposed)[1:length(anova.out)]
+  return(ANOVA_KW.df)
+}
+
+
+
+
+
+runKW = function(logcounts, cell.meta){
+  simulated.data.transposed = data.frame(t(as.matrix(logcounts)))
+  simulated.data.transposed$Dose = as.numeric(cell.meta$Dose)
+  kw.out = KW_test(simulated.data.transposed)
+  kw.out = p.adjust(kw.out, 'fdr')
+  anova.out = anova_test(simulated.data.transposed)
+  anova.out = p.adjust(anova.out, 'fdr')
+  
+  ANOVA_KW.df = data.frame(KW.fdr = kw.out, anova.fdr = anova.out)
+  rownames(ANOVA_KW.df) = colnames(simulated.data.transposed)[1:length(anova.out)]
+  return(ANOVA_KW.df)
+}
+
+calcFC = function(sim){
+  dose_vec = sort(unique(colData(sim)$Dose))
+  m0 = rowMeans(as.matrix(logcounts(sim)[,which(colData(sim)$Dose == 0)]))
+  fc = list()
+  for (dose in dose_vec[-1]){
+    temp.means = rowMeans(as.matrix(logcounts(sim)[,which(colData(sim)$Dose == dose)]))
+    fc[[dose]] = temp.means-m0
+  }
+  fc.out = do.call(cbind, lapply(fc, as.data.frame))
+  colnames(fc.out) = paste0('calculatedFC',names(fc))
+  return(fc.out)
+}
+
+calcZeroP = function(sim){
+  dose_vec = sort(unique(colData(sim)$Dose))
+  pz = list()
+  for (dose in dose_vec){
+    temp.df = as.matrix(logcounts(sim)[,which(colData(sim)$Dose == dose)])
+    pz[[dose]] = apply(temp.df, 1, function(x) sum(x == 0)/length(x))
+  }
+  pz.out = do.call(cbind, lapply(pz, as.data.frame))
+  colnames(pz.out) = paste0('percent.zero',names(pz))
+  return(pz.out)
+}
+
+
+clean_sce = function(sce){
+  assays(sce)$BatchCellMeans = NULL
+  assays(sce)$BaseCellMeans = NULL
+  assays(sce)$BCV = NULL
+  assays(sce)$CellMeans = NULL
+  assays(sce)$TrueCounts = NULL	
+  assays(sce)$counts = Matrix(assays(simDR[[vec_elem]])$counts, sparse = TRUE)
+  assays(sce)$logcounts = Matrix(assays(simDR[[vec_elem]])$logcounts, sparse = TRUE)
+  return(sce)
 }
