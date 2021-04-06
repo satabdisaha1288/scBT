@@ -103,8 +103,10 @@ a_sigma = 6
 a_w = a_t_w = 0.8 #t refers to the treatment groups
 b_w = b_t_w = 0.2
 #length(which(simulated.gene.metadata$Category == "Positive"))
-prior_Alter<-c(1-((0.76)^(1/1900)),0.01,0.05,0.1, 0.2,0.3,0.4,0.5)
-prior_Null<- 1-prior_Alter
+prop_DE<-length(which(simulated.gene.metadata$Model != "Unchanged"))/length(simulated.gene.metadata$Model)
+# Calculate prior_Null for all three approaches local,global,multiplicity corrected
+prior_Null<- c( (1-prop_DE), 0.9 ,((1-prop_DE)^(2/length(simulated.gene.metadata$Model))))
+prior_Alter<-1-prior_Null
 ```
 
 ```{r}
@@ -128,8 +130,8 @@ source('~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/R/BayesFac
                            m_0=mean(m),m=m,K=9,
                            tau_k_mu =tau_k_mu,tau_mu=tau_mu[2], 
                            b_sigma=1,a_sigma=6,a_w=8,b_w=2,
-                           prior_alt =prior_Alter[4],
-                           prior_null = prior_Null[4])
+                           prior_alt =prior_Alter[2],
+                           prior_null = prior_Null[2])
   }
 ```
 
@@ -218,8 +220,8 @@ source('~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/R/BayesFac
                            tau_k_mu =c(tau_k_mu[1],tau_k_mu[9]),
                            tau_mu=tau_mu[2], 
                            b_sigma=1,a_sigma=6,a_w=8,b_w=2,
-                           prior_alt =prior_Alter[4],
-                           prior_null = prior_Null[4])
+                           prior_alt =prior_Alter[2],
+                           prior_null = prior_Null[2])
   }
 ```
 
@@ -293,8 +295,8 @@ for (i in levels(dose_level)[-1])
                            tau_k_mu =c(tau_k_mu["0"],tau_k_mu[i]),
                            tau_mu=tau_mu[2], 
                            b_sigma=1,a_sigma=6,a_w=8,b_w=2,
-                           prior_alt =prior_Alter[4],
-                           prior_null = prior_Null[4]
+                           prior_alt =prior_Alter[2],
+                           prior_null = prior_Null[2]
                )
   }
 }
@@ -366,8 +368,8 @@ library(ggplot2)
 dose <- c(rep(0.01 , 4) , rep(0.03 , 4) , rep(0.1 , 4) , rep(0.3 , 4) , rep(1 , 4),rep(3 , 4) ,
             rep(10 , 4),rep(30 , 4)  )
 type <- rep(c("TP" , "FP" , "FN","TN") , 8)
-value1<-c(28,3,526,269,38,12,516,260,68,126,486,146,105,189,449,83,
-          196,236,358,36,279,269,275,3,417,272,137,0,554,272,0,0)
+value1<-c(29,2,527,271,39,7,517,266,68,68,488,205,108,134,448,139,
+          202,234,354,39,291,272,265,1,435,273,121,0,556,273,0,0)
 cf <- data.frame(dose,type,value1)
 ```
 
@@ -530,10 +532,10 @@ caret::confusionMatrix(factor(pred_dec_LRT_mult_lfc,levels=c("Positive","Negativ
 
 ```{r}
 
-method <- c(rep("BF" , 4) , rep("Anova" , 4) , rep("KW" , 4) , rep("Wilcox" , 4) , rep("MAST" , 4),rep("LRT_mult" , 4), rep("BF_BFPair" , 4))
-type <- rep(c("TP" , "FP" , "FN","TN") , 7)
-value1<-c(554,272,1594,18985,1603,4756,545,14501,1706,6380,442,12877,1730,8463,418,10794,
-          1631,1271,517,17986,1786,11504,362,7753,952,972,1196,18285)
+method <- c(rep("BF" , 4) , rep("Anova" , 4) , rep("KW" , 4) , rep("Wilcox" , 4) , rep("MAST" , 4),rep("LRT_mult" , 4))
+type <- rep(c("TP" , "FP" , "FN","TN") , 6)
+value1<-c(556,273,1592,18984,1671,5680,477,13577,1706,6337,442,12920,1731,8432,417,10825,
+          1783,1271,517,17986,1782,11530,366,7727)
 cf <- data.frame(method,type,value1)
 ggplot(cf, aes(fill=type, y=value1, x=as.factor(method))) + 
   geom_text(aes(label=value1), position = position_dodge(width=1),
@@ -547,8 +549,8 @@ ggplot(cf, aes(fill=type, y=value1, x=as.factor(method))) +
 method <- c(rep("BF" , 4) , rep("Anova" , 4) , rep("KW" , 4),rep("Wilcox" , 4) ,
             rep("MAST" , 4),rep("LRT_mult" , 4))
 type <- rep(c("TP" , "FP" , "FN","TN") , 6)
-value<-c(512,272,1636,18985,559,410,1589,18847,559,410,1589,18847,586,413,1562,18844,
-         72,55,2076,19202,559,410,1589,18847)
+value<-c(486,273,1662,18984,499,287,1649,18970,449,287,1649,18970,524,287,1624,18970,
+         72,55,2076,19202,499,287,1649,18970)
 cf <- data.frame(method,type,value)
 ggplot(cf, aes(fill=type, y=value, x=as.factor(method))) + 
   geom_text(aes(label=value), position = position_dodge(width=1),
