@@ -525,7 +525,7 @@ caret::confusionMatrix(factor(pred_dec_LRT_mult_lfc,levels=c("Positive","Negativ
 method <- c(rep("BF" , 4) , rep("Anova" , 4) , rep("KW" , 4) , rep("Wilcox" , 4) , rep("MAST" , 4),rep("LRT_mult" , 4))
 type <- rep(c("TP" , "FP" , "FN","TN") , 6)
 value1<-c(556,280,1579,18981,1704,6040,451,13221,1724,6511,431,12750,1755,8694,380,10567,
-          1783,1271,517,17986,1806,11189,349,8072)
+          1749,6202,406,13059,1806,11189,349,8072)
 cf <- data.frame(method,type,value1)
 ggplot(cf, aes(fill=type, y=value1, x=as.factor(method))) + 
   geom_text(aes(label=value1), position = position_dodge(width=1),
@@ -540,7 +540,7 @@ method <- c(rep("BF" , 4) , rep("Anova" , 4) , rep("KW" , 4),rep("Wilcox" , 4) ,
             rep("MAST" , 4),rep("LRT_mult" , 4))
 type <- rep(c("TP" , "FP" , "FN","TN") , 6)
 value<-c(489,280,1666,18981,496,288,1659,18973,496,288,1659,18973,522,288,1633,18973,
-         72,55,2076,19202,496,288,1659,18973)
+         53,223,2102,19038,496,288,1659,18973)
 cf <- data.frame(method,type,value)
 ggplot(cf, aes(fill=type, y=value, x=as.factor(method))) + 
   geom_text(aes(label=value), position = position_dodge(width=1),
