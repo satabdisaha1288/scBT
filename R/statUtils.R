@@ -285,6 +285,7 @@ sceCalcPriors = function(sce){
 #' Calc....
 #' 
 #' @param data.list list of gene x cell matrics for each dose
+#' TODO: param needs name and description
 #' @param m
 #' @param tau_k_mu
 #' @param tau_mu

@@ -207,10 +207,12 @@ runSimulation = function(n = 50, start_id = 1, class = 'Hill', realData = NULL, 
   return(list(data = df, parameters = data.table::rbindlist(par, fill = TRUE), stop_id = i))
 }
 
+# TODO: convert2snseq.Rd needs name/title
 convert2snseq = function(reference, modeledData, ncells, sd.scale = 1, p.zero = 2, by.doses = FALSE){
   #' 
   #' 
   #' @param reference = realData
+  #' TODO: param needs name and description
   #' @param simulatedMeans
   #' @param..
   
