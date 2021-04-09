@@ -1,11 +1,35 @@
-#Calculation of Bayes factor
-#Y_t : n times p matrix of observed data having n cells and p genes 
-#in the treatment group
-#Y_c : n times p matrix of observed data having n cells and p genes 
-#in the control group
-Bayes_factor<-function(Y_t,Y_c,m_t0,m_c0,m_0,tau_t_mu,tau_c_mu,
-                       tau_mu, b_sigma,a_sigma,a_w,a_c_w,a_t_w,
-                       b_w,b_t_w,b_c_w,prior_alt,prior_null)
+#' Calculation of Bayes factor
+#' 
+#' @param Y_t list of matrices of observed data having n cells and p genes
+#' @param Y_c list of matrices of observed data having n cells and p genes 
+#' in the control group
+#' @param m_t0
+#' @param m_c0
+#' @param m_0
+#' @param tau_t_mu
+#' @param tau_c_mu
+#' @param tau_mu
+#' @param b_sigma
+#' @param a_sigma
+#' @param a_w
+#' @param a_c_w
+#' @param a_t_w
+#' @param b_w
+#' @param b_t_w
+#' @param b_c_w
+#' @param prior_alt
+#' @param prior_null
+#' 
+#' @details
+#'  
+#' @return 
+#'  
+#' @example
+# TODO: Will this only work for 7 doses. We should look into making it 
+# adaptable to varying dose numbers
+Bayes_factor<-function(Y_t, Y_c, m_t0, m_c0, m_0, tau_t_mu, tau_c_mu,
+                       tau_mu, b_sigma, a_sigma, a_w, a_c_w, a_t_w,
+                       b_w, b_t_w, b_c_w, prior_alt, prior_null)
 {
   #Bayes_factor_01<-vector(mode = "numeric",length = ncol(Y_t))
   l_D0<-vector(mode = "numeric",length = ncol(Y_t))
