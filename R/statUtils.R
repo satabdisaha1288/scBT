@@ -323,7 +323,7 @@ runANOVA = function(sce){
   logcounts = data.frame(t(as.matrix(logcounts(sce))))
   
   
-  logcounts, cell.meta
+  #logcounts, cell.meta
   simulated.data.transposed = data.frame(t(as.matrix(logcounts)))
   simulated.data.transposed$Dose = as.numeric(cell.meta$Dose)
   kw.out = KW_test(simulated.data.transposed)
