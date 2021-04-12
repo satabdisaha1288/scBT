@@ -22,6 +22,8 @@ The development version of SplattDR can be installed from Github:
 ```
 
 # Quickstart
+Differential expression tests require a `SingleCellExperiment` object with a `Dose` column in the `colData` slot. 
+To demonstrate its application we generate a simulated dose-response dataset using `splattDR`. 
 ```{r}
 # Load packages
 suppressPackageStartupMessages({
@@ -73,7 +75,37 @@ prior_Null<- 1-prior_Alter
 # Calculate Bayes priors and performs bayes test
 priors.out = calc_priors(logcounts(sim), colData(sim), rowData(Sim))
 bf_1 = bf_01(priors.out$split.simulated, priors.out$m, tau_k_mu, tau_mu, prior_Alter, prior_Null)
+
 ```
+
+
+# Other differential expression tests
+## ANOVA and Kruskal Wallis
+TODO: split the tests
+```{r}
+anova.kw = runANOVA_KW(logcounts(sim), colData(sim))
+```
+
+
+## Likelihood ratio test
+```{r}
+LRT = runLRT(priors.out$split.simulated)
+head(LRT)
+```
+
+## Wilcoxon rank-sum test
+```{r}
+wrs.out = runWRS(logcounts(sim), colData(sim))
+head(wrs.out)
+```
+## MAST
+```{r}
+MAST = runMAST(sim)
+head(MAST)
+```
+
+
+
 
 
 ```{r}
