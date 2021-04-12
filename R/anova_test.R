@@ -16,6 +16,17 @@ batchANOVA = function(sce){
   return(aov.pvalues)
 }
 
+#' Performs a ANOVA test on a logcounts matrix for a given dose
+#' 
+#' @param data The logcounts matrix
+#' @param dose The dose to analyze
+#' 
+#' @return A p value from the ANOVA test
+#' 
+#' @example 
+#' 
+#' @importFrom
+#' @export
 runAnova = function(data, dose){
   my_data = data.frame(value = data, dose = dose)
   res.aov = aov(value ~ dose, data = my_data)
