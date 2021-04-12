@@ -16,9 +16,9 @@ batchANOVA = function(sce){
   return(aov.pvalues)
 }
 
-#' Performs a ANOVA test on a logcounts matrix for a given dose
+#' Performs a ANOVA test on a logcounts vactor for a given dose
 #' 
-#' @param data The logcounts matrix
+#' @param data The logcounts vector
 #' @param dose The dose to analyze
 #' 
 #' @return A p value from the ANOVA test
