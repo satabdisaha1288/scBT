@@ -1,3 +1,5 @@
+# Author: Rance Nault
+
 #' Performs a genewise ANOVA test on a SingleCellExperiment object
 #' 
 #' @param sce SingleCellExperiment object with a logcounts assay 
@@ -34,8 +36,10 @@ runAnova = function(data, dose){
   return(aov.pvalue)
 }
 
+###############################################################################
+# Author: Satabdi Saha
 
-#' Performed genewise ANOVA test on a cell x row matrix
+#' Performs genewise ANOVA test on a cell x row matrix
 #' 
 #' @param data matrix where cells are rows and genes are columns
 #' 
