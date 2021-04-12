@@ -1,0 +1,247 @@
+---
+title: "SCE_DR_STATS: Statistical analysis of dose-response single-cell data"
+author: 
+  - "Rance Nault"
+  - "Satabdi Saha"
+package: "statsDR"
+data: "Last updated: April 12, 2021"
+output: 
+  BiocStyle::html_document:
+    toc: true
+    toc_float: true
+  vignette: >
+    %\VignetteIndexEntry{simple example}
+    %\VignetteEngine{knitr::rmarkdown}
+    %\VignetteEncoding{UTF-8}
+---
+
+# Installation
+The development version of SplattDR can be installed from Github:
+```{r}
+#devtools::install(...elt())
+```
+
+# Quickstart
+```{r}
+# Load packages
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(ggplot2)
+  library(SingleCellExperiment)
+  library(splatter)
+  library(scater)
+  library(matrixStats)
+  library(caret)
+  library(Matrix)
+  library(data.table)
+  library(MAST)
+  library(splattdr)
+  library(checkmate)
+})
+
+# Create mock data - TODO: Load DR data
+set.seed(1)
+sce = mockSCE()
+
+# Estimate parameters from the SCE object -- replace with real dose-response
+params <- splatter::splatEstimate(sce)
+
+# Define doses and number of cells per dose and simulate dose-response data
+sim.dose = c(0, 0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30)
+dose.prob = rep(1/9, 9)
+sim = splatSimulateDR(params, dose.names = sim.dose, dose.prob = dose.prob, verbose = FALSE)
+
+# Set Fixed parameters - TODO: Code into the function
+tau_t_mu = tau_c_mu = tau_mu = c(0.5,1,2,3)
+tau_k_mu<-rep(1,9)
+names(tau_k_mu) = c(0, 0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30)
+## Use sigma_mean and sigma_var to solve for b_sigma and a_sigma
+b_sigma = 1
+a_sigma = 6
+## Use mean and variance of omega to solve for a_w and b_w
+## We keep the same values of a_w and b_w for all groups since the omega mean and omega SD values are more or less consistent.
+a_w = a_t_w = 0.8 #t refers to the treatment groups
+b_w = b_t_w = 0.2
+
+
+# Calculate priors
+de.prob = getParam(params, 'de.prob')
+nGenes = getParam(params, 'nGenes')
+prior_Alter<-c(1-((1-de.prob)^(1/nrow(nGenes))),0.01,0.05,0.1, 0.2,0.3,0.4,0.5)
+prior_Null<- 1-prior_Alter
+  
+# Calculate Bayes priors and performs bayes test
+priors.out = calc_priors(logcounts(sim), colData(sim), rowData(Sim))
+bf_1 = bf_01(priors.out$split.simulated, priors.out$m, tau_k_mu, tau_mu, prior_Alter, prior_Null)
+```
+
+
+```{r}
+
+  message('Performing pairwise bayesian analysis. This can take several minutes...')
+  bf_pair_1 = bf_pair(priors.out$split.simulated, bf_1, priors.out$m, tau_k_mu, tau_mu, prior_Alter, prior_Null)
+  
+  message('Performing ANOVA and Kruskal-Wallis tests. This can take several minutes...')
+  anova.kw = runANOVA_KW(simulated.data, simulated.cell.metadata)
+    
+  message('Running pair-wise Wilcox Rank Sum test. This can take several minutes...')
+  wrs.out = runWRS(simulated.data, simulated.cell.metadata)
+  wrs.out = wrs.out[,-1]
+    
+  message('Running LRT test. This can take several minutes...')
+  LRT = runLRT(priors.out$split.simulated)
+    
+  message('Running MAST test. This can take several minutes...')
+  MAST = runMAST(simDR[[vec_elem]])
+    
+  message('finalize')
+  bf_test = list(prior = priors.out$priors, bf_1 = bf_1, bf_pair = bf_pair_1, anova.kw = anova.kw, wrs = wrs.out, LRT = LRT, MAST = MAST)
+  stat.out[[vec_elem]] = bf_test
+  saveRDS(stat.out, file = 'statout.simulation1.batch.RData')
+  write(paste0(simNo, ': ', date()), file = 'sim.successes.log', append = TRUE)
+}
+```
+
+```{r}
+confusion.df = data.frame(matrix(ncol = 6, nrow = 0))
+colnames(confusion.df) = c('dataset', 'test', 'type', 'num.Prediction', 'num.Reference', 'num.Freq')
+for (test in names(stat.out)){
+  gene.meta = rowData(simDR[[test]][rownames(stat.out[[test]]$bf_1),])
+  True = as.factor(ifelse(gene.meta$DE_idx == 1, 'Negative', 'Positive'))
+  True.bf = as.factor(ifelse(stat.out[[test]]$bf_1$exp_bf > 1/30, 'Negative', 'Positive'))
+  True.anova = as.factor(ifelse(stat.out[[test]]$anova.kw$anova.fdr > 0.05, 'Negative', 'Positive'))
+  True.kw = as.factor(ifelse(stat.out[[test]]$anova.kw$KW.fdr > 0.05, 'Negative', 'Positive'))
+  True.wrs = as.factor(ifelse(apply(stat.out[[test]]$wrs[,grepl('fdr', colnames(stat.out[[test]]$wrs))], 1, FUN=min) > 0.05, 'Negative', 'Positive'))
+  True.wrs[is.na(True.wrs)] = 'Negative'
+  True.mast = as.factor(ifelse(apply(stat.out[[test]]$MAST[rownames(stat.out[[test]]$bf_1), grepl('fdr', colnames(stat.out[[test]]$MAST))], 1, FUN=min) > 0.05, 'Negative', 'Positive'))
+  
+  df = data.frame(real = True, bf = True.bf, anova = True.anova, kw = True.kw, wrs = True.wrs, mast = True.mast)
+  rownames(df) = rownames(stat.out[[test]]$bf_1)
+  
+  bf = caret::confusionMatrix(df$bf, df$real)
+  confusion.df = rbind(confusion.df, data.frame(dataset = test,
+                                                test = rep('BF', 4),
+                                                type = c('TN', 'FP','FN', 'TP'),
+                                                bf$table
+                                                ))
+  
+  anova = caret::confusionMatrix(df$anova, df$real)
+  confusion.df = rbind(confusion.df, data.frame(dataset = test,
+                                                test = rep('ANOVA', 4),
+                                                type = c('TN', 'FP','FN', 'TP'),
+                                                anova$table
+                                                ))
+  
+  kw = caret::confusionMatrix(df$kw, df$real)
+  confusion.df = rbind(confusion.df, data.frame(dataset = test,
+                                                test = rep('KW', 4),
+                                                type = c('TN', 'FP','FN', 'TP'),
+                                                kw$table
+                                                ))
+  
+  wrs = caret::confusionMatrix(df$wrs, df$real)
+  confusion.df = rbind(confusion.df, data.frame(dataset = test,
+                                                test = rep('wrs', 4),
+                                                type = c('TN', 'FP','FN', 'TP'),
+                                                wrs$table
+                                                ))
+  
+  mast = caret::confusionMatrix(df$mast, df$real)
+  confusion.df = rbind(confusion.df, data.frame(dataset = test,
+                                                test = rep('mast', 4),
+                                                type = c('TN', 'FP','FN', 'TP'),
+                                                mast$table
+                                                ))
+   
+  
+}
+```
+
+
+
+```{r}
+t = seq(0.001, 1, by = 0.01)
+bf.acc = c()
+bf.thresh = c()
+fp = c()
+fn = c()
+sim = c()
+for (test in names(stat.out)){
+  print(test)
+  for (thresh in t){
+    gene.meta = rowData(simDR[[test]][rownames(stat.out[[test]]$bf_1),])
+    True = as.factor(ifelse(gene.meta$DE_idx == 1, 'Negative', 'Positive'))
+    True.bf = as.factor(ifelse(stat.out[[test]]$bf_1$exp_bf > thresh, 'Negative', 'Positive'))
+    
+    df = data.frame(real = True, bf = True.bf)
+    bf = caret::confusionMatrix(df$bf, df$real)
+    bf.acc = c(bf.acc, bf$overall[1])
+    fp = c(fp, bf$table[2])
+    fn = c(fn, bf$table[3])
+    bf.thresh = c(bf.thresh, log(thresh, 10))
+    sim = c(sim, test)
+  }
+}
+```
+
+
+```{r}
+d = data.frame(sim = sim, acc = bf.acc, thresh = bf.thresh, fn = fn, fp = fp)
+ggplot(data = d, aes(x = thresh, y = fn, color = sim)) +
+  geom_line(size = 2) +
+  theme_bw()
+
+d = data.frame(sim = sim, acc = bf.acc, thresh = bf.thresh, fn = fn, fp = fp)
+ggplot(data = d, aes(x = thresh, y = fp, color = sim)) +
+  geom_line(size = 2) +
+  theme_bw()
+
+d = data.frame(sim = sim, acc = bf.acc, thresh = bf.thresh, fn = fn, fp = fp)
+ggplot(data = d, aes(x = thresh, y = acc, color = sim)) +
+  geom_line(size = 2) +
+  theme_bw()
+```
+
+
+
+
+```{r fig.width = 14, fig.height = 6}
+ggplot(data = confusion.df, aes(fill = type, y = Freq, x = factor(test))) +
+  geom_text(aes(label = Freq), 
+            position = position_dodge(width = 1), 
+            size = 3, vjust = -0.5) +
+  geom_bar(position = "dodge", stat = "identity", color = 'black') +
+  xlab("Method") + ylab("Confusion Matrix Values") +
+  facet_wrap(~dataset) +
+  theme_bw()
+```
+
+
+```{r}
+FN = rownames(df[which(df$real == 'Positive' & df$bf == 'Negative'), ])
+TP = rownames(df[which(df$real == 'Positive' & df$bf != 'Negative'), ])
+
+fn.genes = data.frame(rowData(simDR.list[[4]])[FN,])
+check = data.frame(dataset = 'FN', Means = log(fn.genes$GeneMean,2), Model = fn.genes$Model, DE_idx = fn.genes$DE_idx)
+tp.genes = data.frame(rowData(simDR.list[[4]])[TP,])
+check = rbind(check, data.frame(dataset = 'TP', Means = log(tp.genes$GeneMean,2), Model = tp.genes$Model, DE_idx = tp.genes$DE_idx))
+
+ggplot(data = check, aes(x = dataset, y = Means)) +
+  geom_violin() + 
+  geom_jitter(shape=16, position=position_jitter(0.2)) +
+  theme_bw()
+
+ggplot(data = check, aes(x = dataset, y = Means)) +
+  facet_wrap(~Model) +
+  geom_violin() + 
+  geom_jitter(shape=16, position=position_jitter(0.2)) +
+  theme_bw()
+
+ggplot(data = check, aes(x = dataset, y = DE_idx)) +
+  geom_violin() + 
+  geom_jitter(shape=16, position=position_jitter(0.2)) +
+  theme_bw()
+
+```
+
+
