@@ -1,3 +1,4 @@
+#TODO: Document parameters
 #' Calculation of Bayes factor
 #' 
 #' @param Y_t list of matrices of observed data having n cells and p genes
