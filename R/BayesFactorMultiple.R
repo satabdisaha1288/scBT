@@ -1,9 +1,25 @@
-#Calculation of Bayes factor
-#Y : list of size K (nlevels(dose_level)) of n (cells) times p(gene, in our case p=1) 
-# matrices of observed data having n cells and p genes in K treatment dose groups 
-#in the treatment group
-#K is the number of groups
-#m is the vector of group means
+
+#' Title Bayesian Test for dose-dependent differential gene experession analysis
+#' @author Satabdi Saha 
+#' @param Y : list of size K (nlevels(dose_level)) of n (cells) times p(gene, in our case p=1) 
+#' matrices of observed data having n cells and p genes in K treatment dose groups 
+#' @param m : vector of group means
+#' @param m_0 : grand_mean of m
+#' @param tau_k_mu 
+#' @param K : number of dose groups
+#' @param tau_mu 
+#' @param b_sigma 
+#' @param a_sigma 
+#' @param a_w 
+#' @param b_w 
+#' @param prior_alt 
+#' @param prior_null 
+#'
+#' @return output: A list having the different parts of the log-likelihood function, log 
+#' prior odds and the log Bayes factor test statistic
+#' @export
+#'
+#' @examples
 Bayes_factor_multiple<-function(Y,m,m_0,tau_k_mu,K,
                        tau_mu, b_sigma,a_sigma,a_w,
                        b_w,prior_alt,prior_null)
