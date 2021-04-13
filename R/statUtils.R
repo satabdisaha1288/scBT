@@ -285,6 +285,7 @@ sceCalcPriors = function(sce){
 #' Calc....
 #' 
 #' @param data.list list of gene x cell matrics for each dose
+#' TODO: param needs name and description
 #' @param m
 #' @param tau_k_mu
 #' @param tau_mu
@@ -322,7 +323,7 @@ runANOVA = function(sce){
   logcounts = data.frame(t(as.matrix(logcounts(sce))))
   
   
-  logcounts, cell.meta
+  #logcounts, cell.meta
   simulated.data.transposed = data.frame(t(as.matrix(logcounts)))
   simulated.data.transposed$Dose = as.numeric(cell.meta$Dose)
   kw.out = KW_test(simulated.data.transposed)

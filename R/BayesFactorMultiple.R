@@ -36,7 +36,7 @@ Bayes_factor_multiple<-function(Y,m,m_0,tau_k_mu,K,
   l_Bayes_factor_01<-vector(mode = "numeric",length = ncol(Y[[1]]))
   # n: number of cells in each dose groups
   n<- sapply(Y, function(x) nrow(x))
-  # Number of genes being tested in each dose group ( in case of indepengent testing p=1)
+  # Number of genes being tested in each dose group ( in case of independent testing p=1)
   p<- sapply(Y, function(x) ncol(x))
   # list of K dose level indicator matrices (1 for positive expression)
   R <- lapply(Y, function(x) ifelse(x>0,1,0))
