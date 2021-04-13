@@ -1,0 +1,111 @@
+---
+title: "SCE_DR_STATS: Statistical analysis of dose-response single-cell data"
+author: 
+  - "Rance Nault"
+  - "Satabdi Saha"
+package: "statsDR"
+data: "Last updated: April 12, 2021"
+output: 
+  BiocStyle::html_document:
+    toc: true
+    toc_float: true
+  vignette: >
+    %\VignetteIndexEntry{simple example}
+    %\VignetteEngine{knitr::rmarkdown}
+    %\VignetteEncoding{UTF-8}
+---
+
+# Installation
+The development version of SplattDR can be installed from Github:
+```{r}
+#devtools::install(...elt())
+```
+
+# Quickstart
+Differential expression tests require a `SingleCellExperiment` object with a `Dose` column in the `colData` slot. 
+To demonstrate its application we generate a simulated dose-response dataset using `splattDR`. 
+```{r}
+# Load packages
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(ggplot2)
+  library(SingleCellExperiment)
+  library(splatter)
+  library(scater)
+  library(matrixStats)
+  library(caret)
+  library(Matrix)
+  library(data.table)
+  library(MAST)
+  library(splattdr)
+  library(checkmate)
+})
+
+# Create mock data - TODO: Load DR data
+set.seed(1)
+sce = mockSCE()
+
+# Estimate parameters from the SCE object -- replace with real dose-response
+params <- splatter::splatEstimate(sce)
+
+# Define doses and number of cells per dose and simulate dose-response data
+sim.dose = c(0, 0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30)
+dose.prob = rep(1/9, 9)
+sim = splatSimulateDR(params, dose.names = sim.dose, dose.prob = dose.prob, verbose = FALSE)
+```
+
+
+```{r}
+# Set Fixed parameters - TODO: Code into the function
+tau_t_mu = tau_c_mu = tau_mu = c(0.5,1,2,3)
+tau_k_mu<-rep(1,9)
+names(tau_k_mu) = c(0, 0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30)
+## Use sigma_mean and sigma_var to solve for b_sigma and a_sigma
+b_sigma = 1
+a_sigma = 6
+## Use mean and variance of omega to solve for a_w and b_w
+## We keep the same values of a_w and b_w for all groups since the omega mean and omega SD values are more or less consistent.
+a_w = a_t_w = 0.8 #t refers to the treatment groups
+b_w = b_t_w = 0.2
+```
+
+Because we are using simulated data we known exactly the proportion of differentially expressed genes using the `getParam` function from `splatter`. 
+```{r}
+# Calculate priors
+de.prob = getParam(params, 'de.prob')
+nGenes = getParam(params, 'nGenes')
+prior_Alter<-c(1-((1-de.prob)^(1/nrow(nGenes))),0.01,0.05,0.1, 0.2,0.3,0.4,0.5) ## Can we move to inside the function since its a formula?
+prior_Null<- 1-prior_Alter
+  
+# Calculate Bayes priors and performs bayes test
+priors.out = calc_priors(logcounts(sim), colData(sim), rowData(Sim)) # combine into a single function
+bf_1 = bf_01(priors.out$split.simulated, priors.out$m, tau_k_mu, tau_mu, prior_Alter, prior_Null)
+
+```
+
+
+# Other differential expression tests
+## ANOVA and Kruskal Wallis
+TODO: split the tests
+```{r}
+anova.kw = runANOVA_KW(logcounts(sim), colData(sim))
+```
+
+
+## Likelihood ratio test
+```{r}
+LRT = runLRT(priors.out$split.simulated)
+head(LRT)
+```
+
+## Wilcoxon rank-sum test
+```{r}
+wrs.out = runWRS(logcounts(sim), colData(sim))
+head(wrs.out)
+```
+## MAST
+```{r}
+MAST = runMAST(sim)
+head(MAST)
+```
+
