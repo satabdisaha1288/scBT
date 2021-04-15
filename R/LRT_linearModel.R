@@ -11,7 +11,7 @@
 batchLRT_linearModel <- function(sce){
   data = as.matrix(logcounts(sce))
   dose = colData(sce)$Dose
-  output<- t(apply(data[1:3,],1,runLRT_linearModel))
+  output<- t(apply(data,1,runLRT_linearModel))
   colnames(output)<-c("teststat_norm", "pvalue_norm",
                       "teststat_logistic", "pvalue_logistic",
                       "teststat_comb", "pvalue_comb")
