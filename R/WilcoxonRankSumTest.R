@@ -1,3 +1,16 @@
+##########################################################################
+
+# Author: Satabdi Saha
+
+#' Performed genewise Wilcoxon Rank Sum test on a cell x row matrix
+#' 
+#' @param data matrix where cells are rows and genes are columns
+#' 
+#' @return
+#' 
+#' @example
+#' 
+#' @export
 #Function for carrying out the Wicoxon Rank Sum test
 #data is a dataframe of n cells as rows and p+1 columns with first p columns as p genes and the last 
 #column is the dose information
