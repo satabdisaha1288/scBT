@@ -13,6 +13,10 @@ data_group_summary<-function(data){
       summarise(
         count = n(),
         mean = mean(value, na.rm = TRUE),
+        mean_pos = mean(value[value>0], na.rm = TRUE),
+        quantile_25 = quantile(value,probs=0.25,na.rm=TRUE),
+        quantile_50 = quantile(value,probs=0.50,na.rm=TRUE),
+        quantile_75 = quantile(value,probs=0.75,na.rm=TRUE),
         sd = sd(value, na.rm = TRUE),
         drop_prop = length(which(value == 0))/ length(value),
       )
