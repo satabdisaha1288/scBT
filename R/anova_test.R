@@ -1,3 +1,5 @@
+# Author: Rance Nault
+
 #' Performs a genewise ANOVA test on a SingleCellExperiment object
 #' 
 #' @param sce SingleCellExperiment object with a logcounts assay 
@@ -16,6 +18,17 @@ batchANOVA = function(sce){
   return(aov.pvalues)
 }
 
+#' Performs a ANOVA test on a logcounts vactor for a given dose
+#' 
+#' @param data The logcounts vector
+#' @param dose The dose to analyze
+#' 
+#' @return A p value from the ANOVA test
+#' 
+#' @example 
+#' 
+#' @importFrom
+#' @export
 runAnova = function(data, dose){
   my_data = data.frame(value = data, dose = dose)
   res.aov = aov(value ~ dose, data = my_data)
@@ -23,8 +36,10 @@ runAnova = function(data, dose){
   return(aov.pvalue)
 }
 
+###############################################################################
+# Author: Satabdi Saha
 
-#' Performed genewise ANOVA test on a cell x row matrix
+#' Performs genewise ANOVA test on a cell x row matrix
 #' 
 #' @param data matrix where cells are rows and genes are columns
 #' 
