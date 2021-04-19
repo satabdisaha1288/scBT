@@ -26,6 +26,7 @@ Differential expression tests require a `SingleCellExperiment` object with a `Do
 To demonstrate its application we generate a simulated dose-response dataset using `splattDR`. 
 ```{r}
 # Load packages
+## TODO: Reduce requirements - look for redundancy
 suppressPackageStartupMessages({
   library(dplyr)
   library(ggplot2)
