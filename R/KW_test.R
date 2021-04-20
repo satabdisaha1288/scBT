@@ -1,7 +1,6 @@
-# Author: Jack Dodson
-
 #' Performs a genewise Kruskal Wallis test on a SingleCellExperiment object
 #' 
+#' @author Jack Dodson
 #' @param sce SingleCellExperiment object with a logcounts assay 
 #' and Dose column in the cell metadata
 #' 
@@ -20,6 +19,7 @@ batchKW = function(sce){
 
 #' Performs a Kruskal Wallis test on a logcounts vactor for a given dose
 #' 
+#' @author Jack Dodson
 #' @param data The logcounts vector
 #' @param dose The dose to analyze
 #' 
@@ -38,13 +38,12 @@ runKW = function(data, dose){
 
 ##########################################################################
 
-# Author: Satabdi Saha
-
 #' Performed genewise Kruskal Wallis test on a cell x row matrix
 #' 
+#' @author Satabdi Saha
 #' @param data matrix where cells are rows and genes are columns
 #' 
-#' @return
+#' @return a vector of p values from the Kruskal Wallis test
 #' 
 #' @example 
 #' 
