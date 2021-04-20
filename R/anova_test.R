@@ -5,7 +5,6 @@
 #' 
 #' @return a vector of p values from the ANOVA test
 #' 
-#' @example 
 #' @export
 batchANOVA = function(sce){
   data = as.matrix(logcounts(sce))

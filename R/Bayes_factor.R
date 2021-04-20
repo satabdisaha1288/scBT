@@ -24,9 +24,6 @@
 #'  
 #' @return INSERT DESCR
 #'  
-#' @example
-# TODO: Will this only work for 7 doses. We should look into making it 
-# adaptable to varying dose numbers
 Bayes_factor<-function(Y_t, Y_c, m_t0, m_c0, m_0, tau_t_mu, tau_c_mu,
                        tau_mu, b_sigma, a_sigma, a_w, a_c_w, a_t_w,
                        b_w, b_t_w, b_c_w, prior_alt, prior_null)

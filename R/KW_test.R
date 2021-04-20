@@ -5,10 +5,6 @@
 #' and Dose column in the cell metadata
 #' 
 #' @return a vector of p values from the Kruskal Wallis test
-#' 
-#' @example 
-#' 
-#' @importFrom SingleCellExperiment logcounts colData
 #' @export
 batchKW = function(sce){
   data = as.matrix(logcounts(sce))
@@ -24,10 +20,6 @@ batchKW = function(sce){
 #' @param dose The dose to analyze
 #' 
 #' @return A p value from the Kruskal Wallis test
-#' 
-#' @example 
-#' 
-#' @importFrom
 #' @export
 runKW = function(data, dose){
   my_data <- data.frame(value = data, dose = dose)
@@ -44,8 +36,6 @@ runKW = function(data, dose){
 #' @param data matrix where cells are rows and genes are columns
 #' 
 #' @return a vector of p values from the Kruskal Wallis test
-#' 
-#' @example 
 #' 
 #' @export
 #Function for carrying out the Kruskal Wallis Test

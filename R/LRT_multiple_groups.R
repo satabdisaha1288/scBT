@@ -6,8 +6,6 @@
 #' 
 #' @return INSERT RETURN DESCR HERE
 #' 
-#' @example 
-#' 
 #' @export
 LRT_multiple_groups <- function(data, data_ind){
   data_pos<-lapply(data_ind,function(x) sum(x))
