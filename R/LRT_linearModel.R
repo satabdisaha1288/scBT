@@ -6,8 +6,6 @@
 #' @return A data frame giving the test statistic and unadjusted p values
 #' for the linear, logistic and combined regression models for p genes
 #' @export
-#'
-#' @examples
 batchLRT_linearModel <- function(sce){
   data = as.matrix(logcounts(sce))
   dose = colData(sce)$Dose
