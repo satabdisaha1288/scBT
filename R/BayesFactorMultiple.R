@@ -1,5 +1,5 @@
 
-#' Title Bayesian Test for dose-dependent differential gene experession analysis
+#' Title Bayesian Test for dose-dependent differential gene expression analysis
 #' @author Satabdi Saha 
 #' @param Y : list of size K (nlevels(dose_level)) of n (cells) times p(gene, in our case p=1) 
 #' matrices of observed data having n cells and p genes in K treatment dose groups 
@@ -18,11 +18,9 @@
 #' @return output: A list having the different parts of the log-likelihood function, log 
 #' prior odds and the log Bayes factor test statistic
 #' @export
-#'
-#' @examples
-Bayes_factor_multiple<-function(Y,m,m_0,tau_k_mu,K,
-                       tau_mu, b_sigma,a_sigma,a_w,
-                       b_w,prior_alt,prior_null)
+Bayes_factor_multiple<-function(Y, m, m_0, tau_k_mu = rep(1,9), K,
+                       tau_mu = c(0.5, 1, 2, 3), b_sigma = 1, a_sigma = 6, a_w = 0.8,
+                       b_w = 0.2, prior_alt, prior_null)
 {
   ind_D0<-matrix(NA, ncol = ncol(Y[[1]]),nrow = K)
   l_D0<-vector(mode = "numeric",length = ncol(Y[[1]]))

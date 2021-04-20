@@ -1,3 +1,12 @@
+#' Performs a genewise ANOVA test on a SingleCellExperiment object
+#' 
+#' @param sce SingleCellExperiment object with a logcounts assay 
+#' and Dose column in the cell metadata
+#' 
+#' @return a vector of p values from the ANOVA test
+#' 
+#' @example 
+#' @export
 calc_priors = function(simulated.data, simulated.cell.metadata, simulated.gene.metadata){
   data.list = list()
   priors = data.frame(matrix(NA, nrow = 0, ncol = 5))
@@ -21,6 +30,15 @@ calc_priors = function(simulated.data, simulated.cell.metadata, simulated.gene.m
   return(list(split.simulated = data.list, priors = priors, m = m))
 }
 
+#' Performs a genewise ANOVA test on a SingleCellExperiment object
+#' 
+#' @param sce SingleCellExperiment object with a logcounts assay 
+#' and Dose column in the cell metadata
+#' 
+#' @return a vector of p values from the ANOVA test
+#' 
+#' @example 
+#' @export
 bf_01 = function(data.list, m, tau_k_mu, tau_mu, prior_Alter, prior_Null){
   #bf_multiple_01<-rep(list(list()), nrow(data.list[["0"]]))
   bf_multiple_01 = list()
@@ -48,6 +66,15 @@ bf_01 = function(data.list, m, tau_k_mu, tau_mu, prior_Alter, prior_Null){
   return(bf_multiple_01)
 }
 
+#' Performs a genewise ANOVA test on a SingleCellExperiment object
+#' 
+#' @param sce SingleCellExperiment object with a logcounts assay 
+#' and Dose column in the cell metadata
+#' 
+#' @return a vector of p values from the ANOVA test
+#' 
+#' @example 
+#' @export
 bf_pair = function(data.list, bf_1, m, tau_k_mu, tau_mu, prior_Alter, prior_Null){
   #significant.genes = rownames(bf_1[which(bf_1$bf.t.0.1 == 'Positive'),])
   significant.genes = rownames(bf_1)
@@ -83,6 +110,15 @@ bf_pair = function(data.list, bf_1, m, tau_k_mu, tau_mu, prior_Alter, prior_Null
   return(bf_pair)
 }
 
+#' Performs a genewise ANOVA test on a SingleCellExperiment object
+#' 
+#' @param sce SingleCellExperiment object with a logcounts assay 
+#' and Dose column in the cell metadata
+#' 
+#' @return a vector of p values from the ANOVA test
+#' 
+#' @example 
+#' @export
 runANOVA_KW = function(logcounts, cell.meta){
   simulated.data.transposed = data.frame(t(as.matrix(logcounts)))
   simulated.data.transposed$Dose = as.numeric(cell.meta$Dose)
@@ -96,6 +132,15 @@ runANOVA_KW = function(logcounts, cell.meta){
   return(ANOVA_KW.df)
 }
 
+#' Performs a genewise ANOVA test on a SingleCellExperiment object
+#' 
+#' @param sce SingleCellExperiment object with a logcounts assay 
+#' and Dose column in the cell metadata
+#' 
+#' @return a vector of p values from the ANOVA test
+#' 
+#' @example 
+#' @export
 runWRS = function(logcounts, cell.meta){
   #simulated.data.transposed = data.frame(t(as.matrix(logcounts)))
   #simulated.data.transposed$Dose = as.numeric(cell.meta$Dose)
@@ -115,6 +160,15 @@ runWRS = function(logcounts, cell.meta){
   return(WRS)
 }
 
+#' Performs a genewise ANOVA test on a SingleCellExperiment object
+#' 
+#' @param sce SingleCellExperiment object with a logcounts assay 
+#' and Dose column in the cell metadata
+#' 
+#' @return a vector of p values from the ANOVA test
+#' 
+#' @example 
+#' @export
 runLRT = function(data.list){
   for (dose in names(data.list)){
     data.list[[dose]] = as.matrix(data.list[[dose]])
@@ -150,7 +204,15 @@ runLRT = function(data.list){
   return(LRT.out)
 }
 
-
+#' Performs a genewise ANOVA test on a SingleCellExperiment object
+#' 
+#' @param sce SingleCellExperiment object with a logcounts assay 
+#' and Dose column in the cell metadata
+#' 
+#' @return a vector of p values from the ANOVA test
+#' 
+#' @example 
+#' @export
 calcFC = function(sim){
   dose_vec = sort(unique(colData(sim)$Dose))
   m0 = rowMeans(as.matrix(logcounts(sim)[,which(colData(sim)$Dose == 0)]))
@@ -164,6 +226,15 @@ calcFC = function(sim){
   return(fc.out)
 }
 
+#' Performs a genewise ANOVA test on a SingleCellExperiment object
+#' 
+#' @param sce SingleCellExperiment object with a logcounts assay 
+#' and Dose column in the cell metadata
+#' 
+#' @return a vector of p values from the ANOVA test
+#' 
+#' @example 
+#' @export
 calcZeroP = function(sim){
   dose_vec = sort(unique(colData(sim)$Dose))
   pz = list()
@@ -176,7 +247,15 @@ calcZeroP = function(sim){
   return(pz.out)
 }
 
-
+#' Performs a genewise ANOVA test on a SingleCellExperiment object
+#' 
+#' @param sce SingleCellExperiment object with a logcounts assay 
+#' and Dose column in the cell metadata
+#' 
+#' @return a vector of p values from the ANOVA test
+#' 
+#' @example 
+#' @export
 runMAST = function(sce){
   scaRaw = FromMatrix(as.matrix(logcounts(sce)),
                       data.frame(colData(sce)),
@@ -237,21 +316,15 @@ runMAST = function(sce){
   return(m)
 }
 
-
-
-
-
-
-#' Calculate empirical Bayes priors
+#' Performs a genewise ANOVA test on a SingleCellExperiment object
 #' 
-#' Calc....
+#' @param sce SingleCellExperiment object with a logcounts assay 
+#' and Dose column in the cell metadata
 #' 
-#' @param sce SingleCellExperiment to calculate priors from
+#' @return a vector of p values from the ANOVA test
 #' 
-#' @return ddd
-#' 
-#' @importFrom matrixStats rowVars
-
+#' @example 
+#' @export
 sceCalcPriors = function(sce){
   #Initialize list, tables, and vectors
   data.list = list()
@@ -280,22 +353,15 @@ sceCalcPriors = function(sce){
 }
 
 
-#' Calculate empirical Bayes priors
+#' Performs a genewise ANOVA test on a SingleCellExperiment object
 #' 
-#' Calc....
+#' @param sce SingleCellExperiment object with a logcounts assay 
+#' and Dose column in the cell metadata
 #' 
-#' @param data.list list of gene x cell matrics for each dose
-#' TODO: param needs name and description
-#' @param m
-#' @param tau_k_mu
-#' @param tau_mu
-#' @param prior_Alter
-#' @param prior_Null
+#' @return a vector of p values from the ANOVA test
 #' 
-#' @return bf_multiple_01
-#' 
-#' @importFrom purrr map
-
+#' @example 
+#' @export
 bayesDETest = function(data.list, m, tau_k_mu, tau_mu, prior_Alter, prior_Null){
   bf_multiple_01 = list()
   for(j in rownames(data.list[[1]])){
@@ -318,7 +384,15 @@ bayesDETest = function(data.list, m, tau_k_mu, tau_mu, prior_Alter, prior_Null){
 
 
 
-
+#' Performs a genewise ANOVA test on a SingleCellExperiment object
+#' 
+#' @param sce SingleCellExperiment object with a logcounts assay 
+#' and Dose column in the cell metadata
+#' 
+#' @return a vector of p values from the ANOVA test
+#' 
+#' @example 
+#' @export
 runANOVA = function(sce){
   logcounts = data.frame(t(as.matrix(logcounts(sce))))
   
@@ -336,10 +410,15 @@ runANOVA = function(sce){
   return(ANOVA_KW.df)
 }
 
-
-
-
-
+#' Performs a genewise ANOVA test on a SingleCellExperiment object
+#' 
+#' @param sce SingleCellExperiment object with a logcounts assay 
+#' and Dose column in the cell metadata
+#' 
+#' @return a vector of p values from the ANOVA test
+#' 
+#' @example 
+#' @export
 runKW = function(logcounts, cell.meta){
   simulated.data.transposed = data.frame(t(as.matrix(logcounts)))
   simulated.data.transposed$Dose = as.numeric(cell.meta$Dose)
@@ -353,32 +432,16 @@ runKW = function(logcounts, cell.meta){
   return(ANOVA_KW.df)
 }
 
-calcFC = function(sim){
-  dose_vec = sort(unique(colData(sim)$Dose))
-  m0 = rowMeans(as.matrix(logcounts(sim)[,which(colData(sim)$Dose == 0)]))
-  fc = list()
-  for (dose in dose_vec[-1]){
-    temp.means = rowMeans(as.matrix(logcounts(sim)[,which(colData(sim)$Dose == dose)]))
-    fc[[dose]] = temp.means-m0
-  }
-  fc.out = do.call(cbind, lapply(fc, as.data.frame))
-  colnames(fc.out) = paste0('calculatedFC',names(fc))
-  return(fc.out)
-}
 
-calcZeroP = function(sim){
-  dose_vec = sort(unique(colData(sim)$Dose))
-  pz = list()
-  for (dose in dose_vec){
-    temp.df = as.matrix(logcounts(sim)[,which(colData(sim)$Dose == dose)])
-    pz[[dose]] = apply(temp.df, 1, function(x) sum(x == 0)/length(x))
-  }
-  pz.out = do.call(cbind, lapply(pz, as.data.frame))
-  colnames(pz.out) = paste0('percent.zero',names(pz))
-  return(pz.out)
-}
-
-
+#' Performs a genewise ANOVA test on a SingleCellExperiment object
+#' 
+#' @param sce SingleCellExperiment object with a logcounts assay 
+#' and Dose column in the cell metadata
+#' 
+#' @return a vector of p values from the ANOVA test
+#' 
+#' @example 
+#' @export
 clean_sce = function(sce){
   assays(sce)$BatchCellMeans = NULL
   assays(sce)$BaseCellMeans = NULL

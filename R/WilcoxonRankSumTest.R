@@ -1,15 +1,9 @@
-# Author: Jack Dodson
-
 #' Performs a genewise Wilcoxon Rank Sum test on a SingleCellExperiment object
 #' 
 #' @param sce SingleCellExperiment object with a logcounts assay 
 #' and Dose column in the cell metadata
 #' 
 #' @return a vector of p values from the Wilcoxon Rank Sum test
-#' 
-#' @example 
-#' 
-#' @importFrom SingleCellExperiment logcounts colData
 #' @export
 batchWRS = function(sce){
   data = as.matrix(logcounts(sce))
@@ -24,10 +18,6 @@ batchWRS = function(sce){
 #' @param dose The dose to analyze
 #'
 #' @return A p value from the Wilcoxon Rank Sum test
-#'
-#' @example
-#'
-#' @importFrom
 #' @export
 runWRS = function(data, dose){
   my_data <- data.frame(value = data, dose = dose)
@@ -37,16 +27,11 @@ runWRS = function(data, dose){
 }
 
 ##########################################################################
-
-# Author: Satabdi Saha
-
 #' Performed genewise Wilcoxon Rank Sum test on a cell x row matrix
 #' 
 #' @param data matrix where cells are rows and genes are columns
 #' 
 #' @return
-#' 
-#' @example
 #' 
 #' @export
 #Function for carrying out the Wicoxon Rank Sum test
