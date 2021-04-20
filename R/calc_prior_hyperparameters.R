@@ -2,7 +2,7 @@
 
 #Calculate a_sigma, b_sigma
 
-calc_a_sigma_a_sigma<-function(sigma_mean,sigma_var){
+calc_a_sigma_b_sigma<-function(sigma_mean,sigma_var){
   mean_sigma_mean<-mean(sigma_mean)
   mean_sigma_var<-mean(sigma_var)
   a_sigma<-(1/((mean_sigma_mean^2)*mean_sigma_var)) + 2
