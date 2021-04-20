@@ -1,8 +1,15 @@
+#' INSERT DESCRIPTION HERE
+#' 
+#' @author
+#' @param data the list of vectors of the positive observations( must of length sum(each vector in data_ind))
+#' @param data_ind a list having K vectors of the zeroes/ones for expressed or not in each of the K -groups
+#' 
+#' @return INSERT RETURN DESCR HERE
+#' 
+#' @example 
+#' 
+#' @export
 LRT_multiple_groups <- function(data, data_ind){
-  ## data_ind is a list having K vectors of the zeroes/ones for expressed or not
-  ##in each of the K -groups
-  ##  data is the list of vectors of the positive observations( must of length sum(each vector in data_ind))
-  
   data_pos<-lapply(data_ind,function(x) sum(x))
   data_size<-lapply(data_ind,function(x) length(x))
   dim.check<-Map("==",data_pos, lapply(data,function(x) length(x)))
