@@ -5,7 +5,6 @@
 #' 
 #' @return a vector of p values from the ANOVA test
 #' 
-#' @example 
 #' @export
 calc_priors = function(simulated.data, simulated.cell.metadata, simulated.gene.metadata){
   data.list = list()
@@ -37,7 +36,6 @@ calc_priors = function(simulated.data, simulated.cell.metadata, simulated.gene.m
 #' 
 #' @return a vector of p values from the ANOVA test
 #' 
-#' @example 
 #' @export
 bf_01 = function(data.list, m, tau_k_mu, tau_mu, prior_Alter, prior_Null){
   #bf_multiple_01<-rep(list(list()), nrow(data.list[["0"]]))
@@ -73,7 +71,6 @@ bf_01 = function(data.list, m, tau_k_mu, tau_mu, prior_Alter, prior_Null){
 #' 
 #' @return a vector of p values from the ANOVA test
 #' 
-#' @example 
 #' @export
 bf_pair = function(data.list, bf_1, m, tau_k_mu, tau_mu, prior_Alter, prior_Null){
   #significant.genes = rownames(bf_1[which(bf_1$bf.t.0.1 == 'Positive'),])
@@ -117,7 +114,6 @@ bf_pair = function(data.list, bf_1, m, tau_k_mu, tau_mu, prior_Alter, prior_Null
 #' 
 #' @return a vector of p values from the ANOVA test
 #' 
-#' @example 
 #' @export
 runANOVA_KW = function(logcounts, cell.meta){
   simulated.data.transposed = data.frame(t(as.matrix(logcounts)))
@@ -139,7 +135,6 @@ runANOVA_KW = function(logcounts, cell.meta){
 #' 
 #' @return a vector of p values from the ANOVA test
 #' 
-#' @example 
 #' @export
 runWRS = function(logcounts, cell.meta){
   #simulated.data.transposed = data.frame(t(as.matrix(logcounts)))
@@ -167,7 +162,6 @@ runWRS = function(logcounts, cell.meta){
 #' 
 #' @return a vector of p values from the ANOVA test
 #' 
-#' @example 
 #' @export
 runLRT = function(data.list){
   for (dose in names(data.list)){
@@ -210,8 +204,6 @@ runLRT = function(data.list){
 #' and Dose column in the cell metadata
 #' 
 #' @return a vector of p values from the ANOVA test
-#' 
-#' @example 
 #' @export
 calcFC = function(sim){
   dose_vec = sort(unique(colData(sim)$Dose))
@@ -233,7 +225,6 @@ calcFC = function(sim){
 #' 
 #' @return a vector of p values from the ANOVA test
 #' 
-#' @example 
 #' @export
 calcZeroP = function(sim){
   dose_vec = sort(unique(colData(sim)$Dose))
@@ -254,7 +245,6 @@ calcZeroP = function(sim){
 #' 
 #' @return a vector of p values from the ANOVA test
 #' 
-#' @example 
 #' @export
 runMAST = function(sce){
   scaRaw = FromMatrix(as.matrix(logcounts(sce)),
@@ -323,7 +313,6 @@ runMAST = function(sce){
 #' 
 #' @return a vector of p values from the ANOVA test
 #' 
-#' @example 
 #' @export
 sceCalcPriors = function(sce){
   #Initialize list, tables, and vectors
@@ -360,7 +349,6 @@ sceCalcPriors = function(sce){
 #' 
 #' @return a vector of p values from the ANOVA test
 #' 
-#' @example 
 #' @export
 bayesDETest = function(data.list, m, tau_k_mu, tau_mu, prior_Alter, prior_Null){
   bf_multiple_01 = list()
@@ -391,7 +379,6 @@ bayesDETest = function(data.list, m, tau_k_mu, tau_mu, prior_Alter, prior_Null){
 #' 
 #' @return a vector of p values from the ANOVA test
 #' 
-#' @example 
 #' @export
 runANOVA = function(sce){
   logcounts = data.frame(t(as.matrix(logcounts(sce))))
@@ -417,7 +404,6 @@ runANOVA = function(sce){
 #' 
 #' @return a vector of p values from the ANOVA test
 #' 
-#' @example 
 #' @export
 runKW = function(logcounts, cell.meta){
   simulated.data.transposed = data.frame(t(as.matrix(logcounts)))
@@ -440,7 +426,6 @@ runKW = function(logcounts, cell.meta){
 #' 
 #' @return a vector of p values from the ANOVA test
 #' 
-#' @example 
 #' @export
 clean_sce = function(sce){
   assays(sce)$BatchCellMeans = NULL

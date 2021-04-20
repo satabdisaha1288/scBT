@@ -8,8 +8,6 @@
 #' 
 #' @return INSERT RETURN DESCR HERE
 #' 
-#' @example 
-#' 
 #' @export
 lrtest <- function(w.x, w.y, x, y){
   e.x <- sum(w.x)
@@ -59,8 +57,6 @@ lrtest <- function(w.x, w.y, x, y){
 #' @author
 #' @param prod INSERT DESCR
 #' @param logand INSERT DESCR
-#' 
-#' @example 
 #' 
 #' @export
 logProd <- function(prod, logand){
