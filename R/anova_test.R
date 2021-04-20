@@ -1,5 +1,3 @@
-# Author: Rance Nault
-
 #' Performs a genewise ANOVA test on a SingleCellExperiment object
 #' 
 #' @param sce SingleCellExperiment object with a logcounts assay 
@@ -8,8 +6,6 @@
 #' @return a vector of p values from the ANOVA test
 #' 
 #' @example 
-#' 
-#' @importFrom SingleCellExperiment logcounts colData
 #' @export
 batchANOVA = function(sce){
   data = as.matrix(logcounts(sce))
@@ -25,9 +21,6 @@ batchANOVA = function(sce){
 #' 
 #' @return A p value from the ANOVA test
 #' 
-#' @example 
-#' 
-#' @importFrom
 #' @export
 runAnova = function(data, dose){
   my_data = data.frame(value = data, dose = dose)
@@ -37,15 +30,11 @@ runAnova = function(data, dose){
 }
 
 ###############################################################################
-# Author: Satabdi Saha
-
 #' Performs genewise ANOVA test on a cell x row matrix
 #' 
 #' @param data matrix where cells are rows and genes are columns
 #' 
 #' @return
-#' 
-#' @example 
 #' 
 #' @export
 #Function for ANOVA test for each gene 
@@ -64,4 +53,3 @@ anova_test<-function(data){
   }
   return(my_data_anova_p_value)
 }
-

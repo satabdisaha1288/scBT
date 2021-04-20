@@ -1,6 +1,10 @@
-#Function for getting the summary statistics of each gene by group
-#data is a dataframe of n cells as rows and p+1 columns with first p columns as p genes and the last 
-#column is the dose information
+#' Summarises data by groups
+#' 
+#' @param data a data object
+#' 
+#' @return a vector of p values from the ANOVA test
+#' 
+#' @export
 data_group_summary<-function(data){
   my_data_summary<-rep(list(data.frame()),ncol(data)-1)
   #Look at summary statistics for each gene by group
