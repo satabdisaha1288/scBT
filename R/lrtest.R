@@ -1,7 +1,17 @@
+#' INSERT DESCRIPTION HERE
+#' 
+#' @author
+#' @param w.x vector of zeros/ones for expressed or not in each group
+#' @param w.y vector of zeros/ones for expressed or not in each group
+#' @param x vector of the positive observations (must be of length sum(w.x) and sum(w.y))
+#' @param y vector of the positive observations (must be of length sum(w.x) and sum(w.y))
+#' 
+#' @return INSERT RETURN DESCR HERE
+#' 
+#' @example 
+#' 
+#' @export
 lrtest <- function(w.x, w.y, x, y){
-  ## w.x, w.y vectors of zeros/ones for expressed or not in each group
-  ## x, y vectors of the positive observations (must be of length sum(w.x) and sum(w.y))
-  
   e.x <- sum(w.x)
   e.y <-  sum(w.y)
   n.x <-  length(w.x)
@@ -44,6 +54,15 @@ lrtest <- function(w.x, w.y, x, y){
   return(result_comb)
 }
 
+#' INSERT DESCRIPTION HERE
+#' 
+#' @author
+#' @param prod INSERT DESCR
+#' @param logand INSERT DESCR
+#' 
+#' @example 
+#' 
+#' @export
 logProd <- function(prod, logand){
   ifelse(prod==0, 0, prod*log(logand))
 }

@@ -1,29 +1,28 @@
-#TODO: Document parameters
 #' Calculation of Bayes factor
 #' 
 #' @param Y_t list of matrices of observed data having n cells and p genes
 #' @param Y_c list of matrices of observed data having n cells and p genes 
 #' in the control group
-#' @param m_t0
-#' @param m_c0
-#' @param m_0
-#' @param tau_t_mu
-#' @param tau_c_mu
-#' @param tau_mu
-#' @param b_sigma
-#' @param a_sigma
-#' @param a_w
-#' @param a_c_w
-#' @param a_t_w
-#' @param b_w
-#' @param b_t_w
-#' @param b_c_w
-#' @param prior_alt
-#' @param prior_null
+#' @param m_t0 INSERT DESCR
+#' @param m_c0 INSERT DESCR
+#' @param m_0 INSERT DESCR
+#' @param tau_t_mu INSERT DESCR
+#' @param tau_c_mu INSERT DESCR
+#' @param tau_mu INSERT DESCR
+#' @param b_sigma INSERT DESCR
+#' @param a_sigma INSERT DESCR
+#' @param a_w INSERT DESCR
+#' @param a_c_w INSERT DESCR
+#' @param a_t_w INSERT DESCR
+#' @param b_w INSERT DESCR
+#' @param b_t_w INSERT DESCR
+#' @param b_c_w INSERT DESCR
+#' @param prior_alt INSERT DESCR
+#' @param prior_null INSERT DESCR
 #' 
 #' @details
 #'  
-#' @return 
+#' @return INSERT DESCR
 #'  
 #' @example
 # TODO: Will this only work for 7 doses. We should look into making it 
