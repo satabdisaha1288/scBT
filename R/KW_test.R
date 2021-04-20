@@ -64,4 +64,4 @@ KW_test<-function(data){
   return(my_data_kruskal_p_value)
 }
 
-test_result <- KW_test(KW_input)
+#test_result <- KW_test(KW_input)
