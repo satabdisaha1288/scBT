@@ -1,5 +1,5 @@
 #' Linear Model LRT for dose dependent differential gene expression
-#' @author Satabdi Saha
+#' @author Satabdi Saha, Jack Dodson
 #' @param sce A single cell object (Does not allow a logcount matrix with genes having
 #' a dropout of 100%. Such genes should be filtered out before running the test)
 #'
@@ -7,13 +7,20 @@
 #' for the linear, logistic and combined regression models for p genes
 #' @export
 batchLRT_linearModel <- function(sce){
-  data = as.matrix(logcounts(sce))
-  dose = colData(sce)$Dose
-  output<- t(apply(data,1,runLRT_linearModel))
-  colnames(output)<-c("teststat_norm", "pvalue_norm",
+  result = data.frame()
+  for(i in 1:nrow(logcounts(sce))){
+    data = as.matrix(logcounts(sce)[i,])
+    if(sum(data == 0) != nrow(data)){
+      output <- runLRT_linearModel(data)
+      row_stats <- c(i, output[1,1], output[2,1], output[1,2],
+                     output[2,2], output[1,3], output[2,3])
+      result <- rbind(result, row_stats)
+    }
+  }
+  colnames(result)<-c("gene", "teststat_norm", "pvalue_norm",
                       "teststat_logistic", "pvalue_logistic",
                       "teststat_comb", "pvalue_comb")
-  return(output)
+  return(result)
 }
 
 #' Linear Model LRT for dose dependent differential gene expression
