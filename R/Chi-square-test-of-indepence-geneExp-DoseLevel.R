@@ -4,8 +4,6 @@
 #' @return FDR adjusted p-values 
 #
 #' @export
-#'
-#' @examples
 runChi <- function(sce){
   # TODO: replace hardcoded values.
   data_logcounts = as.matrix(logcounts(sce))
