@@ -31,7 +31,3 @@ calc_a_w_b_w<-function(omega_mean, omega_var){
   names(output)<-c("a_w","b_w")
   return(output)
 }
-
-
-
-
