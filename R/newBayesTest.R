@@ -134,7 +134,7 @@ new_Bayes_factor_multiple<-function(Y, prior, detailed = F){
   #constant
   A_tot<- R_y_2_grand_colsum + ((m_0^2)/tau_mu) -
      (((R_y_grand_colsum + (m_0/tau_mu))^2)/ (R_grand_sum + (1/tau_mu)))
-  ##
+  ## END OF DO NOT CHANGE
   
   #TODO: j = genes - remove the genes loop because the input is already 1 gene
   for(j in 1:ncol(Y[[1]]))
@@ -143,7 +143,15 @@ new_Bayes_factor_multiple<-function(Y, prior, detailed = F){
     for(k in 1:K)
     {
       ind_D0[k]<- (0.5)*log(1+ (tau_mu*R_colsum[k][j]))
+      
+      ind_D3[k]<-0.5 * (log(a_w + b_w + n[k] - 1) - log(a_w + R_colsum[k][j] - 1) -
+                          log(b_w + n[k] - R_colsum[k][j] - 1))
+      
+      ind_D4[k]<- ((a_w + b_w + n[k] - 1)* log(a_w + b_w + n[k] - 1)) -
+        ((a_w + R_colsum[k][j] - 1) * log(a_w + R_colsum[k][j] - 1)) -
+        ((b_w + n[k] - R_colsum[k][j] - 1)*log(b_w + n[k] - R_colsum[k][j] - 1))
     }
+    
     # We should then be able to remove this from being put into a list element [j]. We can also remove the [j] from all the inputs/variables
     l_D0[j]<-(1-K) + ((0.5*(1-K))* log (2 * pi)) + colSums(ind_D0) - ((0.5)* log(1+ (tau_mu* R_grand_sum[j]))) +
                (a_sigma + (0.5 *R_grand_sum[j])) * (- log ((1/b_sigma) + (0.5*A_tot[j])) +
@@ -154,17 +162,6 @@ new_Bayes_factor_multiple<-function(Y, prior, detailed = F){
       ((a_w + b_w + sum(n) -1)* log(a_w + b_w + sum(n) -1)) +
       ((b_w + sum(n) - R_grand_sum[j] -1)* log(b_w + sum(n) - R_grand_sum[j] -1))
     
-    # This might be redundant with the previous loop. Could probably be changed to an apply. Remove[j] values again. 
-    for( k in 1: K)
-    {
-      ind_D3[k]<-0.5 * (log(a_w + b_w + n[k] - 1) - log(a_w + R_colsum[k][j] - 1) -
-                        log(b_w + n[k] - R_colsum[k][j] - 1))
-      
-     ind_D4[k]<- ((a_w + b_w + n[k] - 1)* log(a_w + b_w + n[k] - 1)) -
-        ((a_w + R_colsum[k][j] - 1) * log(a_w + R_colsum[k][j] - 1)) -
-        ((b_w + n[k] - R_colsum[k][j] - 1)*log(b_w + n[k] - R_colsum[k][j] - 1))
-    }
-    
     #l is a sum of the ind
     l_D3[j]<- colSums(ind_D3)
     l_D4[j]<- colSums(ind_D4)
@@ -174,6 +171,7 @@ new_Bayes_factor_multiple<-function(Y, prior, detailed = F){
     l_prior_odds<- log(prior_alt) - log(prior_null)
     l_Bayes_factor_01[j]<-  l_likelihood + l_prior_odds
   }
+  
   # TODO: This  might come out as a dataframe instead. Make sure gene is saved as rowname
   output <- list(l_likelihood, l_prior_odds, l_Bayes_factor_01)
   names(output) <- c("l_likelihood", "l_prior_odds", "l_Bayes_factor_01")
