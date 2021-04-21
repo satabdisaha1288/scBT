@@ -7,6 +7,7 @@
 #'
 #' @examples
 runChi <- function(sce){
+  # TODO: replace hardcoded values.
   data_logcounts = as.matrix(logcounts(sce))
   dose = colData(sce)$Dose
   data_dose<-data.frame(t(data_logcounts),dose)
@@ -20,7 +21,7 @@ runChi <- function(sce){
   max_value_data<-max(sapply(data, function(x) apply(x,1,max)))
   #Create a data list with genes binned into certain values
   data_bin<-lapply(data, function(x) t(apply(x,1,function(x){
-    new_breaks<-c(-0.01,0.5,1,2,3,4,ceiling(max_value_data))
+    new_breaks<-c(-0.01,0.5,1,2,3,4,ceiling(max_value_data)) #Most data exists in these bins - fixed number of bins spanning range of values but needs to be unequal to be more around where most of the data is. Quantiles maybe, but fixed for all dose groups.
     table(cut(x, new_breaks))
   })))
   #Create a list of data frames for applying chi-square test of independence
@@ -40,11 +41,3 @@ runChi <- function(sce){
   chisq_test_pvalue_adj<-p.adjust(sapply(chisq_test,function(x) x$p.value),method = "fdr")
   return(chisq_test_pvalue_adj)
 }
-
-
-
-
-
-
-
-
