@@ -18,5 +18,5 @@ for the linear, logistic and combined regression models for p genes
 Linear Model LRT for dose dependent differential gene expression
 }
 \author{
-Satabdi Saha
+Satabdi Saha, Jack Dodson
 }
