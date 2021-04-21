@@ -174,16 +174,14 @@ new_Bayes_factor_multiple<-function(Y, prior, detailed = F){
     l_prior_odds<- log(prior_alt) - log(prior_null)
     l_Bayes_factor_01[j]<-  l_likelihood + l_prior_odds
   }
-  # The output: create the short list first then append if true. This  might come out as a dataframe instead. Make sure gene is saved as rowname
+  # TODO: This  might come out as a dataframe instead. Make sure gene is saved as rowname
+  output <- list(l_likelihood, l_prior_odds, l_Bayes_factor_01)
+  names(output) <- c("l_likelihood", "l_prior_odds", "l_Bayes_factor_01")
   if (detailed == T){
-  output<-list(l_D0,l_D1,l_D2,l_D3,l_D4,l_D5, l_likelihood,
-               l_prior_odds, l_Bayes_factor_01)
-  } else {
-    output<-list(l_D0,l_D1,l_D2,l_D3,l_D4,l_D5, l_likelihood,
-                 l_prior_odds, l_Bayes_factor_01)
+    output <- list(output, l_D0, l_D1, l_D2, l_D3, l_D4, l_D5)
+    names(output) <- c("l_likelihood", "l_prior_odds", "l_Bayes_factor_01",
+                       "l_D0","l_D1","l_D2","l_D3","l_D4","l_D5")
   }
-  names(output)<-c("l_D0","l_D1","l_D2","l_D3","l_D4","l_D5",
-                   "l_likelihood", "l_prior_odds", "l_Bayes_factor_01")
-  
+
   return(output)
 }
