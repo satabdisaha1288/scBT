@@ -91,7 +91,7 @@ new_bayesDETest = function(prior){
 #' @return output: A list having the different parts of the log-likelihood function, log 
 #' prior odds and the log Bayes factor test statistic
 #' @export
-new_Bayes_factor_multiple<-function(Y, prior){
+new_Bayes_factor_multiple<-function(Y, prior, detailed = F){
 
   #Creates empty vectors to put the output from the test. This will also change depending on the loop structure.
   ind_D0<-matrix(NA, ncol = ncol(Y[[1]]),nrow = K)
@@ -175,7 +175,7 @@ new_Bayes_factor_multiple<-function(Y, prior){
     l_Bayes_factor_01[j]<-  l_likelihood + l_prior_odds
   }
   # The output: create the short list first then append if true. This  might come out as a dataframe instead. Make sure gene is saved as rowname
-  if (detailed = TRUE){
+  if (detailed == T){
   output<-list(l_D0,l_D1,l_D2,l_D3,l_D4,l_D5, l_likelihood,
                l_prior_odds, l_Bayes_factor_01)
   } else {
