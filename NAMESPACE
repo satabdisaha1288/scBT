@@ -2,6 +2,7 @@
 
 export(Bayes_factor_multiple)
 export(KW_test)
+export(LRT_linearModel_reworked)
 export(LRT_multiple_groups)
 export(This)
 export(WRS_test)
