@@ -15,6 +15,15 @@ batchLRT_linearModel <- function(sce){
                       "teststat_comb", "pvalue_comb")
   return(output)
 }
+
+#' Linear Model LRT for dose dependent differential gene expression
+#' @author Satabdi Saha
+#' @param sce A single cell object (Does not allow a logcount matrix with genes having
+#' a dropout of 100%. Such genes should be filtered out before running the test)
+#'
+#' @return A data frame giving the test statistic and unadjusted p values
+#' for the linear, logistic and combined regression models for p genes
+#' @export
 runLRT_linearModel<-function(x){
   fit.logistic<-glm(ifelse(x >0,1,0)~1,family = binomial)
   fit.logistic.alt<-glm(ifelse(x >0,1,0) ~ 

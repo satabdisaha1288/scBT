@@ -1,0 +1,96 @@
+---
+title: "Benchmarking DE Tests"
+author: 
+  - "Rance Nault"
+  - "Satabdi Saha"
+package: "statsDR"
+data: "Last updated: April 12, 2021"
+output: 
+  BiocStyle::html_document:
+    toc: true
+    toc_float: true
+  vignette: >
+    %\VignetteIndexEntry{simple example}
+    %\VignetteEngine{knitr::rmarkdown}
+    %\VignetteEncoding{UTF-8}
+---
+
+```{r}
+# Load packages
+## TODO: Reduce requirements - look for redundancy
+suppressPackageStartupMessages({
+  library(snseq.stats)
+})
+```
+# DETesting
+
+- List all the tests that are available (ANOVA, KW, WRS, _LRT_linear_, _LRT_multiple_, _ChiSQ_, MAST, Bayes). Describe the italicized ones. Mention that we updated the test (MAST, WRS) to combined all pairwise. These tests can be run using `DETest`.
+
+## LRT_linear
+Describe
+```{r}
+LRT.linear = DETest(sce, method = 'LRT_linear')
+head(LRT.linear)
+```
+
+## LRT_multiple
+```{r}
+LRT.multiple = DETest(sce, method = 'LRT_linear')
+head(LRT.multiple)
+```
+
+## ChiSQ
+```{r}
+LRT.multiple = DETest(sce, method = 'ChiSQ')
+head(LRT.multiple)
+```
+
+How to list the options of method #TODO: Check how people do this, if they do. 
+```{r}
+
+```
+
+
+#Last
+```{r}
+All = DETest(sce, method = 'runall') #This will take a long time depending on the amount of genes.
+The output should be a list of dataframes that have a p-value/sig value
+```
+
+
+# Benchmarking
+1) Extract p-values of all the test
+Data.frame, allgenes = row, column = test for all genes that meet a criteria. Make one for each test 
+
+How to handle pairwise tests -- pair matrices/foldchange by index
+```{r}
+getDEGs = function(DETestoutput, threshold = 0.05, bayes.threshold = 1/3, fc.threshold = 1, pct.expressed = 0){
+  
+  
+  for (test in DETestoutput){
+    if (names(test) != bayes){
+      #apply 0.05 filter
+    } else {
+      #expbf < 1/3
+    }
+  }
+  return a dataframe
+}
+```
+
+
+2) EXtract 'truth'
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+

@@ -25,10 +25,14 @@ sceCalcPriors = function(sce){
     
     sigma_mean = mean(rowVars(replace(as.matrix(data.list[[dose]]), as.matrix(data.list[[dose]]) == 0, NA), na.rm = TRUE), na.rm = TRUE)
     sigma_var = var(rowVars(replace(as.matrix(data.list[[dose]]), as.matrix(data.list[[dose]]) == 0, NA), na.rm = TRUE),na.rm = TRUE)
+    sigma = calc_a_sigma_a_sigma(sigma_mean, sigma_var)
     #Dose group specific mean dropout proportions for all genes
     omega_mean = mean(apply(as.matrix(data.list[[dose]]), 1, function(x) length(which(x==0))/length(x)))
     omega_var = var(apply(as.matrix(data.list[[dose]]), 1, function(x) length(which(x==0))/length(x)))
-    priors[dose,] = c(dose, sigma_mean, sigma_var, omega_mean, omega_var) #TODO: add all priors to this object. Everything should be here. Might need to hardcode some stuff right now. 
+    omega = calc_a_w_b_w(omega_mean)
+    #priors[dose,] = c(dose, sigma_mean, sigma_var, omega_mean, omega_var) #TODO: add all priors to this object. Everything should be here. Might need to hardcode some stuff right now. 
+    priors = c(sigma, omega) #TODO: convert so that it comes out as a list so we can access using "$".
+    #TODO: Add the prior fixed or calculated to the returned values.
   }
   return(list(split.simulated = data.list, priors = priors, m = m))
 }
@@ -46,10 +50,10 @@ new_bayesDETest = function(prior){
   #TODO: tau_k_mu should be the length of number of doses.
   #TODO: Look into estimating from real data to replace prior_Alter and prior_Null from KW/WRS/ANOVA. Add to priors step.
   
-  Y = priors$split.simulated
-  m = priors$m
-  m_0 = mean(m)
-  tau_k_mu = rep(1,length(m)) #Might change as part of priors
+  # Y = priors$split.simulated
+  # m = priors$m
+  # m_0 = mean(m)
+  # tau_k_mu = rep(1,length(m)) #Might change as part of priors
   
   bf_multiple_01 = list()
   for(j in rownames(data.list[[1]])){
@@ -58,7 +62,9 @@ new_bayesDETest = function(prior){
     bf_multiple_01[[j]]<-Bayes_factor_multiple(
       Y = in.list, priors)
   }
+  #TODO: return only:  l_likelihood, l_prior_odds, l_Bayes_factor_01 and exp_bf if you don't want detailed, otherwise return all including mu and omega
   bf_multiple_01 = do.call(rbind, lapply(bf_multiple_01, as.data.frame)) #Converts to data frame
+  bf_multiple_01$mu = bf_multiple_01$l_D0
   bf_multiple_01$omega = bf_multiple_01$l_D1 + bf_multiple_01$l_D2 + bf_multiple_01$l_D3 + bf_multiple_01$l_D4 + bf_multiple_01$l_D4 
   bf_multiple_01$exp_bf = exp(bf_multiple_01$l_Bayes_factor_01) #Extracts part of test that depends on dropout
   
