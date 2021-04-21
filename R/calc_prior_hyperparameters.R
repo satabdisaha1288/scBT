@@ -22,7 +22,7 @@ calc_a_sigma_b_sigma<-function(sigma_mean,sigma_var){
 #' @return a_w and b_w values
 #
 #' @export
-calc_a_w_b_w<-function(omega_mean,omega_var)
+calc_a_w_b_w<-function(omega_mean,omega_var){
   mean_omega_mean<-mean(omega_mean)
   mean_omega_var<-mean(omega_var)
   a_w = round((((mean_omega_mean^2)*(1-mean_omega_mean)) / mean_omega_var) - mean_omega_mean ,2)
