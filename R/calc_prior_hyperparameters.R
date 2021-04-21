@@ -6,10 +6,12 @@
 #
 #' @export
 calc_a_sigma_b_sigma<-function(sigma_mean,sigma_var){
-  mean_sigma_mean<-mean(sigma_mean)
-  mean_sigma_var<-mean(sigma_var)
-  a_sigma<-(1/((mean_sigma_mean^2)*mean_sigma_var)) + 2
-  b_sigma<-1/(mean_sigma_mean* (a_sigma-1))
+  data<-logcounts(sce)
+  sigma<- apply(data, 1, var)
+  mean_sigma<-mean(sigma[sigma>0])
+  var_sigma<-sd(sigma[sigma>0])^2
+  a_sigma<-(1/((mean_sigma^2)*var_sigma)) + 2
+  b_sigma<-1/(mean_sigma* (a_sigma-1))
   output<-c(a_sigma,b_sigma)
   names(output)<-c("a_sigma","b_sigma")
   return(output)
