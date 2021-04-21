@@ -111,7 +111,7 @@ LRT_multiple_groups <- function(data.list){
   resultvec <- c(-2*binom,  pchisq(-2*binom, length(data) - 1 , lower.tail=FALSE),
                  -2*norm,  pchisq(-2*norm, length(data) - 1, lower.tail=FALSE),
                  -2*logLR, pchisq(-2*logLR,2*length(data)-2 , lower.tail=FALSE))
-  names(resultvec) <- c("lrstat.binom", "p.value.binom", "lrstat.norm", "p.value.norm", "lrstat.comb", "p.value.comb"))
+  names(resultvec) <- c("lrstat.binom", "p.value.binom", "lrstat.norm", "p.value.norm", "lrstat.comb", "p.value.comb")
   return(resultvec)
   #TODO: result is a 4 x 4 matrix but we want it a as a data frame. Gene = rows, columns = values 
 }
