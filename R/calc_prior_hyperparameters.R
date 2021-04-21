@@ -1,3 +1,5 @@
+#Calculate prior hyper-parameters
+
 #Calculate a_sigma, b_sigma
 calc_a_sigma_b_sigma<-function(sigma_mean,sigma_var){
   mean_sigma_mean<-mean(sigma_mean)
