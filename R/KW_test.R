@@ -24,7 +24,7 @@ batchKW = function(sce){
 #' @export
 runKW = function(data, dose){
   my_data <- data.frame(value = data, dose = dose)
-  res.kw = kruskal.test(value ~ dose, data = my_data)
+  res.kw = kruskal.test(data ~ dose, data = my_data)
   kw.pvalue = res.kw[[3]]
   return(kw.pvalue)
 }

@@ -25,7 +25,7 @@ sceCalcPriors = function(sce){
     
     sigma_mean = mean(rowVars(replace(as.matrix(data.list[[dose]]), as.matrix(data.list[[dose]]) == 0, NA), na.rm = TRUE), na.rm = TRUE)
     sigma_var = var(rowVars(replace(as.matrix(data.list[[dose]]), as.matrix(data.list[[dose]]) == 0, NA), na.rm = TRUE),na.rm = TRUE)
-    sigma = calc_a_sigma_a_sigma(sigma_mean, sigma_var)
+    sigma = calc_a_sigma_a_sigma(sce)
     #Dose group specific mean dropout proportions for all genes
     omega_mean = mean(apply(as.matrix(data.list[[dose]]), 1, function(x) length(which(x==0))/length(x)))
     omega_var = var(apply(as.matrix(data.list[[dose]]), 1, function(x) length(which(x==0))/length(x)))

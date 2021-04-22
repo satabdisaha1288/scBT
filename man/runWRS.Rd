@@ -4,25 +4,16 @@
 \alias{runWRS}
 \title{Performs a Wilcoxon Rank Sum test on a logcounts vactor for a given dose}
 \usage{
-runWRS(logcounts, cell.meta)
-
-runWRS(logcounts, cell.meta)
+runWRS(data, dose)
 }
 \arguments{
 \item{data}{The logcounts vector}
 
 \item{dose}{The dose to analyze}
-
-\item{sce}{SingleCellExperiment object with a logcounts assay
-and Dose column in the cell metadata}
 }
 \value{
 A p value from the Wilcoxon Rank Sum test
-
-a vector of p values from the ANOVA test
 }
 \description{
 Performs a Wilcoxon Rank Sum test on a logcounts vactor for a given dose
-
-Performs a genewise ANOVA test on a SingleCellExperiment object
 }
