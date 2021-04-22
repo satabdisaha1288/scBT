@@ -1,7 +1,6 @@
 #' Calculate a_sigma, b_sigma
 #' @author Satabdi Saha
-#' @param sigma_mean INSERT DESCR HERE
-#' @param sigma_var INSERT DESCR HERE
+#' @param sce Single Cell Object
 #' @return a_sigma and b_sigma values
 #
 #' @export
@@ -19,8 +18,8 @@ calc_a_sigma_b_sigma<-function(sce){
 
 #' Calculate a_w, b_w
 #' @author Satabdi Saha
-#' @param omega_mean INSERT DESCR HERE
-#' @param omega_var INSERT DESCR HERE
+#' @param omega_mean Groupwise dropout means
+#' @param omega_var Groupwise dropout variance
 #' @return a_w and b_w values
 #
 #' @export
