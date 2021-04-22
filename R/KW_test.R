@@ -8,9 +8,10 @@
 #' @export
 batchKW = function(sce){
   data = as.matrix(logcounts(sce))
-  dose = colData(sce)$Dose
+  dose = colData(sce)[,"Dose"]
   kw.pvalues = apply(data, 1, function(x) runKW(x, dose))
-  return(kw.pvalues)
+  kw.out = data.frame(kw.pvalues)
+  return(kw.out)
 }
 
 #' Performs a Kruskal Wallis test on a logcounts vactor for a given dose

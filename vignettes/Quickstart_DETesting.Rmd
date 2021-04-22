@@ -110,3 +110,10 @@ Changing the variances
 ```{r}
 
 ```
+
+
+###DELETE BELOW THIS LINE
+```{r}
+batchWRS(sim)
+```
+

@@ -6,7 +6,6 @@
 #' @return a vector of p values from the ANOVA test
 #' 
 #' @export
-#' This is the loop that should group the data to run into LRT_multiple_groups
 runLRT = function(data.list){
   bf_multiple_01 = list() #CHANGE NAME
   for(j in rownames(data.list[[1]])){

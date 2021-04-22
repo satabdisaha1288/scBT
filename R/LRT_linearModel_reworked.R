@@ -4,8 +4,6 @@
 #'
 #' @return A dataframe having the test statistic and p-values 
 #' @export 
-#'
-#' @examples
 LRT_linearModel_reworked<-function(sce){
   data = as.matrix(logcounts(sce))
   dose = as.numeric(as.character(colData(sce)$Dose))
@@ -32,6 +30,3 @@ LRT_linearModel_reworked<-function(sce){
   rownames(output)<-rownames(logcounts(sce))[-which(rowSums(logcounts(sce))==0)]
   return(output) 
 }
-
-
-
