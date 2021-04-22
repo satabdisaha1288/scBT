@@ -4,12 +4,10 @@
 \alias{calc_a_sigma_b_sigma}
 \title{Calculate a_sigma, b_sigma}
 \usage{
-calc_a_sigma_b_sigma(sigma_mean, sigma_var)
+calc_a_sigma_b_sigma(sce)
 }
 \arguments{
-\item{sigma_mean}{INSERT DESCR HERE}
-
-\item{sigma_var}{INSERT DESCR HERE}
+\item{sce}{Single Cell Object}
 }
 \value{
 a_sigma and b_sigma values

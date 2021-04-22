@@ -2,16 +2,22 @@
 % Please edit documentation in R/retired_functions.R
 \name{WRS_test}
 \alias{WRS_test}
-\title{Performed genewise Wilcoxon Rank Sum test on a cell x row matrix}
+\title{Performs a genewise ANOVA test on a SingleCellExperiment object}
 \usage{
 WRS_test(data, dose_level_ref, dose_level_test)
 }
 \arguments{
 \item{data}{matrix where cells are rows and genes are columns}
+
+\item{sce}{SingleCellExperiment object with a logcounts assay
+and Dose column in the cell metadata}
 }
 \value{
+a vector of p values from the ANOVA test
+Performed genewise Wilcoxon Rank Sum test on a cell x row matrix
+
 
 }
 \description{
-Performed genewise Wilcoxon Rank Sum test on a cell x row matrix
+Performs a genewise ANOVA test on a SingleCellExperiment object
 }

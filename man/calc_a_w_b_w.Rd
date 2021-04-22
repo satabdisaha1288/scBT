@@ -7,9 +7,9 @@
 calc_a_w_b_w(omega_mean, omega_var)
 }
 \arguments{
-\item{omega_mean}{INSERT DESCR HERE}
+\item{omega_mean}{Groupwise dropout means}
 
-\item{omega_var}{INSERT DESCR HERE}
+\item{omega_var}{Groupwise dropout variance}
 }
 \value{
 a_w and b_w values

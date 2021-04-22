@@ -4,8 +4,6 @@
 #' @param data matrix where cells are rows and genes are columns
 #' 
 #' @return a vector of p values from the Kruskal Wallis test
-#' 
-#' @export
 #Function for carrying out the Kruskal Wallis Test
 #data is a dataframe of n cells as rows and p+1 columns with first p columns as p genes and the last 
 #column is the dose information
@@ -27,28 +25,24 @@ KW_test<-function(data){
 #' and Dose column in the cell metadata
 #' 
 #' @return a vector of p values from the ANOVA test
-#' 
-#' @export
-runKW = function(logcounts, cell.meta){
-  simulated.data.transposed = data.frame(t(as.matrix(logcounts)))
-  simulated.data.transposed$Dose = as.numeric(cell.meta$Dose)
-  kw.out = KW_test(simulated.data.transposed)
-  kw.out = p.adjust(kw.out, 'fdr')
-  anova.out = anova_test(simulated.data.transposed)
-  anova.out = p.adjust(anova.out, 'fdr')
-  
-  ANOVA_KW.df = data.frame(KW.fdr = kw.out, anova.fdr = anova.out)
-  rownames(ANOVA_KW.df) = colnames(simulated.data.transposed)[1:length(anova.out)]
-  return(ANOVA_KW.df)
-}
+# runKW = function(logcounts, cell.meta){
+#   simulated.data.transposed = data.frame(t(as.matrix(logcounts)))
+#   simulated.data.transposed$Dose = as.numeric(cell.meta$Dose)
+#   kw.out = KW_test(simulated.data.transposed)
+#   kw.out = p.adjust(kw.out, 'fdr')
+#   anova.out = anova_test(simulated.data.transposed)
+#   anova.out = p.adjust(anova.out, 'fdr')
+#   
+#   ANOVA_KW.df = data.frame(KW.fdr = kw.out, anova.fdr = anova.out)
+#   rownames(ANOVA_KW.df) = colnames(simulated.data.transposed)[1:length(anova.out)]
+#   return(ANOVA_KW.df)
+# }
 
 #' Performed genewise Wilcoxon Rank Sum test on a cell x row matrix
 #' 
 #' @param data matrix where cells are rows and genes are columns
 #' 
 #' @return
-#' 
-#' @export
 #Function for carrying out the Wicoxon Rank Sum test
 #data is a dataframe of n cells as rows and p+1 columns with first p columns as p genes and the last 
 #column is the dose information
@@ -69,8 +63,6 @@ WRS_test<-function(data,dose_level_ref,dose_level_test){
 #' and Dose column in the cell metadata
 #' 
 #' @return a vector of p values from the ANOVA test
-#' 
-#' @export
 runANOVA_KW = function(logcounts, cell.meta){
   simulated.data.transposed = data.frame(t(as.matrix(logcounts)))
   simulated.data.transposed$Dose = as.numeric(cell.meta$Dose)
@@ -90,7 +82,6 @@ runANOVA_KW = function(logcounts, cell.meta){
 #' and Dose column in the cell metadata
 #' 
 #' @return a vector of p values from the ANOVA test
-#' @export
 calcFC = function(sim){
   dose_vec = sort(unique(colData(sim)$Dose))
   m0 = rowMeans(as.matrix(logcounts(sim)[,which(colData(sim)$Dose == 0)]))
@@ -110,8 +101,6 @@ calcFC = function(sim){
 #' and Dose column in the cell metadata
 #' 
 #' @return a vector of p values from the ANOVA test
-#' 
-#' @export
 calcZeroP = function(sim){
   dose_vec = sort(unique(colData(sim)$Dose))
   pz = list()
@@ -130,8 +119,6 @@ calcZeroP = function(sim){
 #' and Dose column in the cell metadata
 #' 
 #' @return a vector of p values from the ANOVA test
-#' 
-#' @export
 runANOVA = function(sce){
   logcounts = data.frame(t(as.matrix(logcounts(sce))))
   
@@ -155,8 +142,6 @@ runANOVA = function(sce){
 #' and Dose column in the cell metadata
 #' 
 #' @return a vector of p values from the ANOVA test
-#' 
-#' @export
 bf_pair = function(data.list, bf_1, m, tau_k_mu, tau_mu, prior_Alter, prior_Null){
   #significant.genes = rownames(bf_1[which(bf_1$bf.t.0.1 == 'Positive'),])
   significant.genes = rownames(bf_1)
@@ -198,8 +183,6 @@ bf_pair = function(data.list, bf_1, m, tau_k_mu, tau_mu, prior_Alter, prior_Null
 #' and Dose column in the cell metadata
 #' 
 #' @return a vector of p values from the ANOVA test
-#' 
-#' @export
 calc_priors = function(simulated.data, simulated.cell.metadata, simulated.gene.metadata){
   data.list = list()
   priors = data.frame(matrix(NA, nrow = 0, ncol = 5))
@@ -229,8 +212,6 @@ calc_priors = function(simulated.data, simulated.cell.metadata, simulated.gene.m
 #' and Dose column in the cell metadata
 #' 
 #' @return a vector of p values from the ANOVA test
-#' 
-#' @export
 bf_01 = function(data.list, m, tau_k_mu, tau_mu, prior_Alter, prior_Null){
   #bf_multiple_01<-rep(list(list()), nrow(data.list[["0"]]))
   bf_multiple_01 = list()
