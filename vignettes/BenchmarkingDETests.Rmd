@@ -53,8 +53,15 @@ How to list the options of method #TODO: Check how people do this, if they do.
 
 #Last
 ```{r}
-All = DETest(sce, method = 'runall') #This will take a long time depending on the amount of genes.
-The output should be a list of dataframes that have a p-value/sig value
+All = DETest(sim, method = 'All') #This will take a long time depending on the amount of genes.
+#The output should be a list of dataframes that have a p-value/sig value
+```
+
+
+
+
+```{r}
+batchKW(sim)
 ```
 
 

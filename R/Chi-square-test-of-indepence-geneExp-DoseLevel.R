@@ -11,10 +11,7 @@ runChi <- function(sce){
   data_dose<-data.frame(t(data_logcounts),dose)
   colnames(data_dose)<-c(rownames(data_logcounts),"Dose")
   #Break the dataframe to data lists for seperate dose groups
-  split_tibble <- function(tibble, column = 'col') {
-    tibble %>% dplyr::split(., .[,column]) %>% lapply(., function(x) x[,setdiff(names(x),column)])
-  }
-  data = dplyr::split_tibble(data_dose,"Dose")
+  data = split_tibble(data_dose,"Dose")
   data<-lapply(data, function(x) t(x))
   max_value_data<-max(sapply(data, function(x) apply(x,1,max)))
   #Create a data list with genes binned into certain values
@@ -31,11 +28,22 @@ runChi <- function(sce){
     # a second `lapply` is required to drop `NULL` entries
     a1Only <- lapply(a1, Filter, f = Negate(is.null))
     df[[j]] <- data.frame(matrix(unlist(a1Only), nrow=length(a1Only), byrow=TRUE))
-    rownames(df[[j]])<-levels(dose_level)
+    rownames(df[[j]])<-levels(dose)
     colnames(df[[j]])<-colnames(data_bin[["0.01"]])
   }
   chisq_test<-lapply(df,function(x) chisq.test(x[,which(colSums(x)>0)]))
   names(chisq_test)<-rownames(data[["0"]])
   chisq_test_pvalue_adj<-p.adjust(sapply(chisq_test,function(x) x$p.value),method = "fdr")
+  chisq_test_pvalue_adj = data.frame(chisq_test_pvalue_adj)
   return(chisq_test_pvalue_adj)
+}
+
+#' Chi-square test of independence for binned gene expression data
+#' @author Satabdi Saha
+#' @param sce A Single Cell Object 
+#' @return FDR adjusted p-values 
+#
+#' @export
+split_tibble <- function(tibble, column = 'col') {
+  tibble %>% split(., .[,column]) %>% lapply(., function(x) x[,setdiff(names(x),column)])
 }
