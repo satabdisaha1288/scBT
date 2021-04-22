@@ -5,7 +5,7 @@
 #' @return a_sigma and b_sigma values
 #
 #' @export
-calc_a_sigma_b_sigma<-function(sigma_mean,sigma_var){
+calc_a_sigma_b_sigma<-function(sce){
   data<-logcounts(sce)
   sigma<- apply(data, 1, var)
   mean_sigma<-mean(sigma[sigma>0])
