@@ -25,13 +25,13 @@ sceCalcPriors = function(sce){
     
     sigma_mean = mean(rowVars(replace(as.matrix(data.list[[dose]]), as.matrix(data.list[[dose]]) == 0, NA), na.rm = TRUE), na.rm = TRUE)
     sigma_var = var(rowVars(replace(as.matrix(data.list[[dose]]), as.matrix(data.list[[dose]]) == 0, NA), na.rm = TRUE),na.rm = TRUE)
-    sigma = calc_a_sigma_a_sigma(sce)
+    sigma = calc_a_sigma_b_sigma(sce)
     #Dose group specific mean dropout proportions for all genes
     omega_mean = mean(apply(as.matrix(data.list[[dose]]), 1, function(x) length(which(x==0))/length(x)))
     omega_var = var(apply(as.matrix(data.list[[dose]]), 1, function(x) length(which(x==0))/length(x)))
-    omega = calc_a_w_b_w(omega_mean)
+    omega = calc_a_w_b_w(omega_mean, omega_var)
     #priors[dose,] = c(dose, sigma_mean, sigma_var, omega_mean, omega_var) #TODO: add all priors to this object. Everything should be here. Might need to hardcode some stuff right now. 
-    priors = c(sigma, omega) #TODO: convert so that it comes out as a list so we can access using "$".
+    priors = c(sigma, omega, c(tau_k_mu = length(dose_vec)), c(prior_Alt = 1), c(prior_Null = 0)) #TODO: convert so that it comes out as a list so we can access using "$".
     #TODO: Add the prior fixed or calculated to the returned values.
   }
   return(list(split.simulated = data.list, priors = priors, m = m))
@@ -46,7 +46,8 @@ sceCalcPriors = function(sce){
 #' @return a vector of p values from the ANOVA test - describe omega etc...
 #' 
 #' @export
-new_bayesDETest = function(prior){
+new_bayesDETest = function(priors){
+  data.list = priors$split.simulated
   #TODO: tau_k_mu should be the length of number of doses.
   #TODO: Look into estimating from real data to replace prior_Alter and prior_Null from KW/WRS/ANOVA. Add to priors step.
   
@@ -57,7 +58,7 @@ new_bayesDETest = function(prior){
   
   bf_multiple_01 = list()
   for(j in rownames(data.list[[1]])){
-    in.list = data.list %>% map(as.matrix(~.x[j,]))
+    in.list = data.list %>% purrr::map(as.matrix(~.x[j,]))
     names(in.list) = paste0("Y_", 1:length(in.list))
     bf_multiple_01[[j]]<-Bayes_factor_multiple(
       Y = in.list, priors)
@@ -92,6 +93,10 @@ new_bayesDETest = function(prior){
 #' prior odds and the log Bayes factor test statistic
 #' @export
 new_Bayes_factor_multiple<-function(Y, prior, detailed = F){
+  a_sigma = prior$priors['a_sigma']
+  b_sigma = prior$priors['b_sigma']
+  a_w = prior$priors['a_w']
+  b_w = prior$priors['b_w']
 
   #Creates empty vectors to put the output from the test. This will also change depending on the loop structure.
   ind_D0<-matrix(NA, ncol = ncol(Y[[1]]),nrow = K)

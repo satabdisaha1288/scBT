@@ -29,20 +29,20 @@ suppressPackageStartupMessages({
 ## LRT_linear
 Describe
 ```{r}
-LRT.linear = DETest(sce, method = 'LRT_linear')
+LRT.linear = DETest(sce, method = 'LRT.linear')
 head(LRT.linear)
 ```
 
 ## LRT_multiple
 ```{r}
-LRT.multiple = DETest(sce, method = 'LRT_linear')
+LRT.multiple = DETest(sce, method = 'LRT.multiple')
 head(LRT.multiple)
 ```
 
 ## ChiSQ
 ```{r}
-LRT.multiple = DETest(sce, method = 'ChiSQ')
-head(LRT.multiple)
+chi.square = DETest(sce, method = 'CHISQ')
+head(chi.square)
 ```
 
 How to list the options of method #TODO: Check how people do this, if they do. 
@@ -55,13 +55,23 @@ How to list the options of method #TODO: Check how people do this, if they do.
 ```{r}
 All = DETest(sim, method = 'All') #This will take a long time depending on the amount of genes.
 #The output should be a list of dataframes that have a p-value/sig value
+names(All)
 ```
 
 
+```{r}
+significantGenes = getDEGs(sim, All, threshold = 0.05)
+```
+
+```{r}
+merged.df = Reduce(merge, lapply(list(KW, fc.max, pz.min), function(x) data.frame(x, rn = row.names(x))))
+colnames(merged.df) = c("Gene", "pvalue", "fc.max", "pz.min")
+filtered = merged.df %>% filter(pvalue <= threshold & fc.max >= fc.threshold & pz.min >= pct.expressed)
+```
 
 
 ```{r}
-batchKW(sim)
+new_bayesDETest(h)
 ```
 
 
