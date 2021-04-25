@@ -1,18 +1,45 @@
-#' General function to run the statistical test abstracting much of the individual steps
+#' Differential expression testing
 #' 
-#' @param sce SingleCellExperiment object with a logcounts assay 
-#' and Dose column in the cell metadata
-#' @param method the statistical test(s) to run on the sce object. Can be any of the following: Bayes, LRT.linear, LRT.multiple, ANOVA, KW, WRS, MAST, ChiSQ
+#' The main function to run any of the statistical tests developed as part of
+#' this package for the analysis of single-cell sequencing data.
 #' 
-#' @return a vector of p values from the ANOVA test
+#' @param sce SingleCellExperiment object with a logcounts assay and a "Dose" 
+#' column in the rowData(sce)
+#' @param method the statistical test(s) to run. Options are "BAYES", 
+#' "LRT.linear", "LRT.multiple", "ANOVA", "KW", "WRS", "CHISQ", or "MAST". Leave
+#' empty to run all tests on your dataset. 
+#' 
+#' @details 
+#' Various statistical tests were adapted specifically for dose-response
+#' single-cell/single-nuclei transcriptomic data. The \code{method} enable the 
+#' following tests:
+#' \enumerate{
+#'   \item BAYES is our new Bayes implementation.. what happens when it goes to
+#'   next line?
+#'   \item LRT.linear
+#' }
+#' 
+#' @return a list of data.frames containing the statistical output for each
+#' individual tests performed. 
+#' 
+#' @references Authors... 2021
+#' 
+#' @examples
+#' # Running all statistical tests
+#' DEG.testing <- DETest(sim) 
 #' 
 #' @export
 DETest = function(sce, method = "All", verbose = FALSE){
+  checkmate::assertClass(sce, "SingleCellExperiment")
+  #Check if dose column is there
+  #Check that method is valid
+  
   DETest.list = list()
-  #Check/validate object
-  if (method  == "Bayes" | method == "All"){
+
+  if (method  == "BAYES" | method == "All"){
     if (verbose) {message("Running Bayes test...")}
-    ###############
+    priors = new_sceCalcPriors(sce)
+    DETest.list[["BAYES"]] = new_bayesDETest(priors)
   }
   if (method  == "LRT.linear" | method == "All"){
     if (verbose) {message("Running LRT linear test...")}
@@ -44,3 +71,70 @@ DETest = function(sce, method = "All", verbose = FALSE){
   }
   return(DETest.list)
 }
+
+
+#' General function to run the statistical test abstracting much of the individual steps
+#' 
+#' @param sce SingleCellExperiment object with a logcounts assay 
+#' and Dose column in the cell metadata
+#' @param method the statistical test(s) to run on the sce object. Can be any of the following: Bayes, LRT.linear, LRT.multiple, ANOVA, KW, WRS, MAST, ChiSQ
+#' 
+#' @return a vector of p values from the ANOVA test
+#' 
+#' @export
+getDEGs = function(sce, DETestoutput, threshold = 0.05, bayes.threshold = 1/3, fc.threshold = 0, pct.expressed = 0, verbose = TRUE){
+  fc = abs(calcFC(sce))
+  fc.max = data.frame(apply(fc, 1, function(x) max(x)))
+  pz = calcZeroP(sce)
+  pz.min = data.frame(apply(pz, 1, function(x) min(x)))
+  
+  DEGenes.list = list()
+  
+  for (test in names(DETestoutput)){
+    if (verbose) {message(paste0("Evaluating assay:", test))}
+    filtered = NULL
+    #How to deal with LRT_linear and Bayes?
+    if (ncol(DETestoutput[[test]]) == 1){
+      merged.df = Reduce(merge, lapply(list(DETestoutput[[test]], fc.max, pz.min), function(x) data.frame(x, rn = row.names(x))))
+      colnames(merged.df) = c("Gene", "pvalue", "fc.max", "pz.min")
+      filtered = merged.df %>% filter(pvalue <= threshold & fc.max >= fc.threshold & pz.min >= pct.expressed)
+    } else if (test != 'LRTLin' & test != 'BAYES'){
+      stopifnot(identical(dim(DETestoutput[[test]]), dim(fc)) == TRUE)
+      DETestoutput[[test]][which(fc < fc.threshold)] = NA
+      min.pval = data.frame(apply(DETestoutput[[test]], 1, function(x) min(x)))
+      merged.df = Reduce(merge, lapply(list(min.pval, fc.max, pz.min), function(x) data.frame(x, rn = row.names(x))))
+      colnames(merged.df) = c("Gene", "pvalue", "fc.max", "pz.min")
+      filtered = merged.df %>% filter(pvalue <= threshold & fc.max >= fc.threshold & pz.min >= pct.expressed)
+    } else if (test == 'BAYES') {
+      bayes_exp_bf = DETestoutput[[test]][,"exp_bf", drop = FALSE]
+      merged.df = Reduce(merge, lapply(list(bayes_exp_bf, fc.max, pz.min), function(x) data.frame(x, rn = row.names(x))))
+      colnames(merged.df) = c("Gene", "exp_bf", "fc.max", "pz.min")
+      filtered = merged.df %>% filter(exp_bf <= bayes.threshold & fc.max >= fc.threshold & pz.min >= pct.expressed)
+    }
+    DEGenes.list[[test]] = filtered
+  }
+  return(DEGenes.list)
+}
+
+
+#' General function to run the statistical test abstracting much of the individual steps
+#' 
+#' @param sce SingleCellExperiment object with a logcounts assay 
+#' and Dose column in the cell metadata
+#' @param method the statistical test(s) to run on the sce object. Can be any of the following: Bayes, LRT.linear, LRT.multiple, ANOVA, KW, WRS, MAST, ChiSQ
+#' 
+#' @return a vector of p values from the ANOVA test
+#' 
+#' @export
+TruthFromSim = function(sim, fc.threshold = 0, pct.expressed = 0){
+  fc = abs(calcFC(sim))
+  fc.max = data.frame(fc.max = apply(fc, 1, function(x) max(x)))
+  pz = calcZeroP(sim)
+  pz.min = data.frame(pz.min = apply(pz, 1, function(x) min(x)))
+  gene.meta = data.frame(rowData(sim))
+  merged = Reduce(merge, lapply(list(gene.meta, fc.max, pz.min), function(x) data.frame(x, rn = row.names(x))))
+  merged.deg = merged %>% filter(DE_idx != 1 & fc.max >= fc.threshold & pz.min >= pct.expressed)
+  merged.deg = merged.deg[,-1]
+  return(merged.deg)
+}
+
