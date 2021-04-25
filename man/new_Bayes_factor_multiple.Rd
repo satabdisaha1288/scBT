@@ -4,7 +4,7 @@
 \alias{new_Bayes_factor_multiple}
 \title{Title Bayesian Test for dose-dependent differential gene expression analysis}
 \usage{
-new_Bayes_factor_multiple(Y, prior, detailed = F)
+new_Bayes_factor_multiple(Y, prior, detailed = FALSE)
 }
 \arguments{
 \item{Y}{: list of size K (nlevels(dose_level)) of n (cells) times p(gene, in our case p=1)

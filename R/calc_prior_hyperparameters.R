@@ -32,3 +32,22 @@ calc_a_w_b_w<-function(omega_mean,omega_var){
   names(output)<-c("a_w","b_w")
   return(output)
 }
+
+#' Calculate a_w, b_w
+#' @author Satabdi Saha
+#' @param omega_mean Groupwise dropout means
+#' @param omega_var Groupwise dropout variance
+#' @return a_w and b_w values
+#
+#' @export
+calc_alt_null = function(sce, method = 'fixed', de.prob = 0.25){
+  if (method == 'fixed'){
+    de.prob = 0.25
+  } else {
+    ##Calcualte
+  }
+  prior_Alter<-c(1-((1-de.prob)^(1/nrow(sce))))
+  prior_Null<- 1-prior_Alter
+  p_alt = c(prior_Alter = prior_Alter, prior_Null = prior_Null)
+  return(p_alt)
+}
