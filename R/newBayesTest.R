@@ -6,7 +6,7 @@
 #' @return a vector of p values from the ANOVA test
 #' 
 #' @export
-sceCalcPriors = function(sce){
+new_sceCalcPriors = function(sce){
   #Initialize list, tables, and vectors
   data.list = list()
   m = vector()
@@ -21,17 +21,19 @@ sceCalcPriors = function(sce){
   for (dose in dose_vec){
     data.list[[dose]] = data[,which(cell.metadata$Dose == dose)]
     
-    m[dose]<-mean(rowMeans(replace(data.list[[dose]], data.list[[dose]] == 0, NA), na.rm = TRUE),na.rm = TRUE)
+    m[dose]<-mean(rowMeans(replace(data.list[[dose]], data.list[[dose]] == 0, NA), na.rm = TRUE), na.rm = TRUE)
     
     sigma_mean = mean(rowVars(replace(as.matrix(data.list[[dose]]), as.matrix(data.list[[dose]]) == 0, NA), na.rm = TRUE), na.rm = TRUE)
     sigma_var = var(rowVars(replace(as.matrix(data.list[[dose]]), as.matrix(data.list[[dose]]) == 0, NA), na.rm = TRUE),na.rm = TRUE)
     sigma = calc_a_sigma_b_sigma(sce)
+    
     #Dose group specific mean dropout proportions for all genes
     omega_mean = mean(apply(as.matrix(data.list[[dose]]), 1, function(x) length(which(x==0))/length(x)))
     omega_var = var(apply(as.matrix(data.list[[dose]]), 1, function(x) length(which(x==0))/length(x)))
     omega = calc_a_w_b_w(omega_mean, omega_var)
-    #priors[dose,] = c(dose, sigma_mean, sigma_var, omega_mean, omega_var) #TODO: add all priors to this object. Everything should be here. Might need to hardcode some stuff right now. 
-    priors = c(sigma, omega, c(tau_k_mu = length(dose_vec)), c(prior_Alt = 1), c(prior_Null = 0)) #TODO: convert so that it comes out as a list so we can access using "$".
+    
+    alt = calc_alt_null(sce)
+    priors = c(sigma, omega, c(tau_k_mu = length(dose_vec)), alt)
     #TODO: Add the prior fixed or calculated to the returned values.
   }
   return(list(split.simulated = data.list, priors = priors, m = m))
@@ -46,27 +48,25 @@ sceCalcPriors = function(sce){
 #' @return a vector of p values from the ANOVA test - describe omega etc...
 #' 
 #' @export
-new_bayesDETest = function(priors){
+new_bayesDETest = function(priors, detailed = FALSE){
   data.list = priors$split.simulated
   #TODO: tau_k_mu should be the length of number of doses.
   #TODO: Look into estimating from real data to replace prior_Alter and prior_Null from KW/WRS/ANOVA. Add to priors step.
   
-  # Y = priors$split.simulated
-  # m = priors$m
-  # m_0 = mean(m)
-  # tau_k_mu = rep(1,length(m)) #Might change as part of priors
-  
+  data.list = priors$split.simulated
+
   bf_multiple_01 = list()
   for(j in rownames(data.list[[1]])){
-    in.list = data.list %>% purrr::map(as.matrix(~.x[j,]))
+    in.list = data.list %>% purrr::map(~ as.matrix(.x[j,]))
     names(in.list) = paste0("Y_", 1:length(in.list))
-    bf_multiple_01[[j]]<-Bayes_factor_multiple(
-      Y = in.list, priors)
+    bf_multiple_01[[j]] <- new_Bayes_factor_multiple(Y = in.list, priors)
   }
   #TODO: return only:  l_likelihood, l_prior_odds, l_Bayes_factor_01 and exp_bf if you don't want detailed, otherwise return all including mu and omega
   bf_multiple_01 = do.call(rbind, lapply(bf_multiple_01, as.data.frame)) #Converts to data frame
-  bf_multiple_01$mu = bf_multiple_01$l_D0
-  bf_multiple_01$omega = bf_multiple_01$l_D1 + bf_multiple_01$l_D2 + bf_multiple_01$l_D3 + bf_multiple_01$l_D4 + bf_multiple_01$l_D4 
+  if (detailed){
+    bf_multiple_01$mu = bf_multiple_01$l_D0
+    bf_multiple_01$omega = bf_multiple_01$l_D1 + bf_multiple_01$l_D2 + bf_multiple_01$l_D3 + bf_multiple_01$l_D4 + bf_multiple_01$l_D4 
+  }
   bf_multiple_01$exp_bf = exp(bf_multiple_01$l_Bayes_factor_01) #Extracts part of test that depends on dropout
   
   return(bf_multiple_01)
@@ -92,11 +92,19 @@ new_bayesDETest = function(priors){
 #' @return output: A list having the different parts of the log-likelihood function, log 
 #' prior odds and the log Bayes factor test statistic
 #' @export
-new_Bayes_factor_multiple<-function(Y, prior, detailed = F){
+new_Bayes_factor_multiple<-function(Y, prior, detailed = FALSE){
   a_sigma = prior$priors['a_sigma']
   b_sigma = prior$priors['b_sigma']
   a_w = prior$priors['a_w']
   b_w = prior$priors['b_w']
+  K = prior$priors['tau_k_mu']
+  m = prior$m
+  m_0 = mean(m)
+  tau_k_mu = rep(1:K)
+  tau_mu = 1
+  prior_alt = prior$priors['prior_Alter']
+  prior_null = prior$priors['prior_Null']
+  
 
   #Creates empty vectors to put the output from the test. This will also change depending on the loop structure.
   ind_D0<-matrix(NA, ncol = ncol(Y[[1]]),nrow = K)
@@ -180,7 +188,7 @@ new_Bayes_factor_multiple<-function(Y, prior, detailed = F){
   # TODO: This  might come out as a dataframe instead. Make sure gene is saved as rowname
   output <- list(l_likelihood, l_prior_odds, l_Bayes_factor_01)
   names(output) <- c("l_likelihood", "l_prior_odds", "l_Bayes_factor_01")
-  if (detailed == T){
+  if (detailed){
     output <- list(output, l_D0, l_D1, l_D2, l_D3, l_D4, l_D5)
     names(output) <- c("l_likelihood", "l_prior_odds", "l_Bayes_factor_01",
                        "l_D0","l_D1","l_D2","l_D3","l_D4","l_D5")
