@@ -2,7 +2,7 @@
 % Please edit documentation in R/newBayesTest.R
 \name{new_sceCalcPriors}
 \alias{new_sceCalcPriors}
-\title{Performs a genewise ANOVA test on a SingleCellExperiment object}
+\title{INSERT DESCRIPTION}
 \usage{
 new_sceCalcPriors(sce)
 }
@@ -11,8 +11,8 @@ new_sceCalcPriors(sce)
 and Dose column in the cell metadata}
 }
 \value{
-a vector of p values from the ANOVA test
+INSERT DESCRIPTION
 }
 \description{
-Performs a genewise ANOVA test on a SingleCellExperiment object
+INSERT DESCRIPTION
 }

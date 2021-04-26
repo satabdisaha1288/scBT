@@ -1,9 +1,9 @@
-#' Performs a genewise ANOVA test on a SingleCellExperiment object
+#' INSERT DESCRIPTION
 #' 
 #' @param sce SingleCellExperiment object with a logcounts assay 
 #' and Dose column in the cell metadata
 #' 
-#' @return a vector of p values from the ANOVA test
+#' @return INSERT DESCRIPTION
 #' 
 #' @export
 new_sceCalcPriors = function(sce){

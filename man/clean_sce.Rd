@@ -2,7 +2,7 @@
 % Please edit documentation in R/statUtils.R
 \name{clean_sce}
 \alias{clean_sce}
-\title{Performs a genewise ANOVA test on a SingleCellExperiment object}
+\title{INSERT DESCRIPTION}
 \usage{
 clean_sce(sce)
 }
@@ -11,8 +11,8 @@ clean_sce(sce)
 and Dose column in the cell metadata}
 }
 \value{
-a vector of p values from the ANOVA test
+INSERT DESCRIPTION
 }
 \description{
-Performs a genewise ANOVA test on a SingleCellExperiment object
+INSERT DESCRIPTION
 }
