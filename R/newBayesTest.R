@@ -50,10 +50,7 @@ new_sceCalcPriors = function(sce){
 new_bayesDETest = function(priors, detailed = FALSE){
   library(dplyr)
   data.list = priors$split.simulated
-  #TODO: tau_k_mu should be the length of number of doses.
   #TODO: Look into estimating from real data to replace prior_Alter and prior_Null from KW/WRS/ANOVA. Add to priors step.
-  
-  data.list = priors$split.simulated
 
   bf_multiple_01 = list()
   for(j in rownames(data.list[[1]])){ # For each gene
@@ -72,22 +69,12 @@ new_bayesDETest = function(priors, detailed = FALSE){
   return(bf_multiple_01)
 }
 
-
 #' Title Bayesian Test for dose-dependent differential gene expression analysis
 #' @author Satabdi Saha 
-#' @param Y : list of size K (nlevels(dose_level)) of n (cells) times p(gene, in our case p=1) 
+#' @param Y list of size K (nlevels(dose_level)) of n (cells) times p(gene, in our case p=1) 
 #' matrices of observed data having n cells and p genes in K treatment dose groups 
-#' @param m : vector of group means
-#' @param m_0 : grand_mean of m
-#' @param tau_k_mu 
-#' @param K : number of dose groups
-#' @param tau_mu 
-#' @param b_sigma 
-#' @param a_sigma 
-#' @param a_w 
-#' @param b_w 
-#' @param prior_alt 
-#' @param prior_null 
+#' @param prior INSERT DESCRIPTION
+#' @param detailed A boolean denoting how much info to show in result
 #'
 #' @return output: A list having the different parts of the log-likelihood function, log 
 #' prior odds and the log Bayes factor test statistic
@@ -185,7 +172,6 @@ new_Bayes_factor_multiple<-function(Y, prior, detailed = FALSE){
     l_Bayes_factor_01[j]<-  l_likelihood + l_prior_odds
   }
   
-  # TODO: This  might come out as a dataframe instead. Make sure gene is saved as rowname
   output <- list(l_likelihood, l_prior_odds, l_Bayes_factor_01)
   names(output) <- c("l_likelihood", "l_prior_odds", "l_Bayes_factor_01")
   if (detailed){
