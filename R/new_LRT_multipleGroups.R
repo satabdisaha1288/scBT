@@ -1,4 +1,4 @@
-#' Performs a genewise ANOVA test on a SingleCellExperiment object
+#' INSERT DESCRIPTION
 #' 
 #' @param sce SingleCellExperiment object with a logcounts assay 
 #' and Dose column in the cell metadata
@@ -7,14 +7,12 @@
 #' 
 #' @export
 runLRT = function(data.list){
-  bf_multiple_01 = list() #CHANGE NAME
+  lrt_multiple_01 = list()
   for(j in rownames(data.list[[1]])){
     in.list = data.list %>% purrr::map(as.matrix(~.x[j,]))
     names(in.list) = paste0("Y_", 1:length(in.list))
-    something = LRT_multiple_groups(in.list)
+    lrt_multiple_01 = LRT_multiple_groups(in.list)
   }
-  
-  
   
   for (dose in names(data.list)){
     data.list[[dose]] = as.matrix(data.list[[dose]])
