@@ -67,7 +67,7 @@ DETest = function(sce, method = "All", verbose = FALSE){
   }
   if (method  == "MAST" | method == "All"){
     if (verbose) {message("Running MAST test...")}
-    #################
+    DETest.list[["MAST"]] = runMAST(sce)
   }
   return(DETest.list)
 }
@@ -100,6 +100,8 @@ getDEGs = function(sce, DETestoutput, threshold = 0.05, bayes.threshold = 1/3, f
       filtered = merged.df %>% filter(pvalue <= threshold & fc.max >= fc.threshold & pz.min >= pct.expressed)
     } else if (test != 'LRTLin' & test != 'BAYES'){
       stopifnot(identical(dim(DETestoutput[[test]]), dim(fc)) == TRUE)
+      DETestoutput[[test]] = DETestoutput[[test]][rownames(fc),]
+      DETestoutput[[test]] = as.matrix(DETestoutput[[test]])
       DETestoutput[[test]][which(fc < fc.threshold)] = NA
       min.pval = data.frame(apply(DETestoutput[[test]], 1, function(x) min(x)))
       merged.df = Reduce(merge, lapply(list(min.pval, fc.max, pz.min), function(x) data.frame(x, rn = row.names(x))))

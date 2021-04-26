@@ -63,12 +63,12 @@ names(All)
 Data.frame, allgenes = row, column = test for all genes that meet a criteria. Make one for each test 
 
 ```{r}
-significantGenes = getDEGs(sim, All, threshold = 0.05, fc.threshold = 0, bayes.threshold = 1/10, pct.expressed = 0)
+significantGenes = getDEGs(sim, All, threshold = 0.05, fc.threshold = 0.4, bayes.threshold = 1/10, pct.expressed = 0.25)
 ```
 
 2) EXtract 'truth'
 ```{r}
-trueDEGs = TruthFromSim(sim, fc.threshold = 0, pct.expressed = 0)
+trueDEGs = TruthFromSim(sim, fc.threshold = 0.4, pct.expressed = 0.25)
 ```
 
 ```{r}
@@ -90,12 +90,12 @@ df.confusionMat[which(df.confusionMat$Reference == FALSE & df.confusionMat$Predi
 df.confusionMat[which(df.confusionMat$Reference == FALSE & df.confusionMat$Prediction == FALSE), 'result'] = 'True Negative'
 ```
 
-```{r}
+```{r fig.width = 7.5, fig.height = 3.8}
 ggplot(df.confusionMat, aes(fill = result, y = value, x = tname)) +
   geom_text(aes(label = value), position = position_dodge(width = 1),
             size = 3, vjust = -0.5) +
   geom_bar(position = "dodge", stat = "identity", color = 'black') + 
-  scale_fill_brewer(palette="Set1") +
+  #scale_fill_manual(values = c('#e34242', '#c70000', '#58fc5b', '#04cc08')) +
   theme_bw()
 ```
 
@@ -103,6 +103,9 @@ ggplot(df.confusionMat, aes(fill = result, y = value, x = tname)) +
 
 
 
+```{r}
+o = runMAST(sim)
+```
 
 
 
