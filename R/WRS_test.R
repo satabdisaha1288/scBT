@@ -22,6 +22,7 @@ batchWRS = function(sce){
 #' @return A p value from the Wilcoxon Rank Sum test
 #' @export
 runWRS = function(data, dose){
+  library(dplyr)
   my_data <- data.frame(value = data, dose = dose)
   my_control = my_data %>% filter(dose == levels(dose)[1])
   res.wrs = my_data %>% 
@@ -31,3 +32,4 @@ runWRS = function(data, dose){
   wrs.pvalue = t(data.frame(p.value = res.wrs$p_value))
   return(wrs.pvalue)
 }
+
