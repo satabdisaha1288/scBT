@@ -19,7 +19,7 @@ runMAST = function(sce){
   Dose = factor(colData(scaRaw)$Dose)
   Dose = relevel(Dose,"0")
   colData(scaRaw)$Dose = Dose
-  zlmDose = zlm(~Dose + cngeneson, scaRaw)
+  zlmDose = zlm(~Dose + cngeneson, sca = scaRaw)
   
   summaryDose<-rep(list(list()),times= nlevels(Dose)-1)
   names(summaryDose)<-levels(Dose)[2:9]
