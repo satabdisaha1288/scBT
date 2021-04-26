@@ -39,7 +39,6 @@ new_sceCalcPriors = function(sce){
   return(list(split.simulated = data.list, priors = priors, m = m))
 }
 
-#' TODO: NEEDS WORK/TESTING
 #' INSERT DESCRIPTION
 #' 
 #' @param priors INSERT DESCRIPTION
