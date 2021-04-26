@@ -7,6 +7,7 @@
 #' 
 #' @export
 runMAST = function(sce){
+  library(MAST)
   scaRaw = FromMatrix(as.matrix(logcounts(sce)),
                       data.frame(colData(sce)),
                       data.frame(rowData(sce))
@@ -75,6 +76,7 @@ runMAST = function(sce){
 #' 
 #' @export
 clean_sce = function(sce){
+  library(Matrix)
   assays(sce)$BatchCellMeans = NULL
   assays(sce)$BaseCellMeans = NULL
   assays(sce)$BCV = NULL
