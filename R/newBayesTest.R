@@ -62,7 +62,7 @@ new_bayesDETest = function(priors, detailed = FALSE){
     names(in.list) = paste0("Y_", 1:length(in.list))
     bf_multiple_01[[j]] <- new_Bayes_factor_multiple(Y = in.list, priors, detailed)
   }
-  #TODO: return only:  l_likelihood, l_prior_odds, l_Bayes_factor_01 and exp_bf if you don't want detailed, otherwise return all including mu and omega
+
   bf_multiple_01 = do.call(rbind, lapply(bf_multiple_01, as.data.frame)) #Converts to data frame
   if (detailed){
     bf_multiple_01$mu = bf_multiple_01$l_D0
