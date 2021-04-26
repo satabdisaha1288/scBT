@@ -40,15 +40,16 @@ new_sceCalcPriors = function(sce){
 }
 
 #' TODO: NEEDS WORK/TESTING
-#' Performs a genewise ANOVA test on a SingleCellExperiment object
+#' INSERT DESCRIPTION
 #' 
-#' @param sce SingleCellExperiment object with a logcounts assay 
-#' and Dose column in the cell metadata
+#' @param priors INSERT DESCRIPTION
+#' @param detailed A boolean denoting how much info to show in result
 #' 
-#' @return a vector of p values from the ANOVA test - describe omega etc...
+#' @return INSESRT DESCRIPTION - describe omega etc...
 #' 
 #' @export
 new_bayesDETest = function(priors, detailed = FALSE){
+  library(dplyr)
   data.list = priors$split.simulated
   #TODO: tau_k_mu should be the length of number of doses.
   #TODO: Look into estimating from real data to replace prior_Alter and prior_Null from KW/WRS/ANOVA. Add to priors step.
@@ -56,10 +57,10 @@ new_bayesDETest = function(priors, detailed = FALSE){
   data.list = priors$split.simulated
 
   bf_multiple_01 = list()
-  for(j in rownames(data.list[[1]])){
+  for(j in rownames(data.list[[1]])){ # For each gene
     in.list = data.list %>% purrr::map(~ as.matrix(.x[j,]))
     names(in.list) = paste0("Y_", 1:length(in.list))
-    bf_multiple_01[[j]] <- new_Bayes_factor_multiple(Y = in.list, priors)
+    bf_multiple_01[[j]] <- new_Bayes_factor_multiple(Y = in.list, priors, detailed)
   }
   #TODO: return only:  l_likelihood, l_prior_odds, l_Bayes_factor_01 and exp_bf if you don't want detailed, otherwise return all including mu and omega
   bf_multiple_01 = do.call(rbind, lapply(bf_multiple_01, as.data.frame)) #Converts to data frame
@@ -189,7 +190,8 @@ new_Bayes_factor_multiple<-function(Y, prior, detailed = FALSE){
   output <- list(l_likelihood, l_prior_odds, l_Bayes_factor_01)
   names(output) <- c("l_likelihood", "l_prior_odds", "l_Bayes_factor_01")
   if (detailed){
-    output <- list(output, l_D0, l_D1, l_D2, l_D3, l_D4, l_D5)
+    output <- list(l_likelihood, l_prior_odds, l_Bayes_factor_01, 
+                   l_D0, l_D1, l_D2, l_D3, l_D4, l_D5)
     names(output) <- c("l_likelihood", "l_prior_odds", "l_Bayes_factor_01",
                        "l_D0","l_D1","l_D2","l_D3","l_D4","l_D5")
   }
