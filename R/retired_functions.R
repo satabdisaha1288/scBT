@@ -357,7 +357,7 @@ Bayes_factor<-function(Y_t, Y_c, m_t0, m_c0, m_0, tau_t_mu, tau_c_mu,
 #'
 #' @return output: A list having the different parts of the log-likelihood function, log 
 #' prior odds and the log Bayes factor test statistic
-Bayes_factor_multiple<-function(Y, m, m_0, tau_k_mu = rep(1,9), K,
+old_Bayes_factor_multiple<-function(Y, m, m_0, tau_k_mu = rep(1,9), K,
                                 tau_mu = c(0.5, 1, 2, 3), b_sigma = 1, a_sigma = 6, a_w = 0.8,
                                 b_w = 0.2, prior_alt, prior_null)
 {
@@ -448,7 +448,7 @@ Bayes_factor_multiple<-function(Y, m, m_0, tau_k_mu = rep(1,9), K,
 #' and Dose column in the cell metadata
 #' 
 #' @return a vector of p values from the ANOVA test
-sceCalcPriors = function(sce){
+old_sceCalcPriors = function(sce){
   #Initialize list, tables, and vectors
   data.list = list()
   m = vector()
@@ -481,7 +481,7 @@ sceCalcPriors = function(sce){
 #' and Dose column in the cell metadata
 #' 
 #' @return a vector of p values from the ANOVA test
-bayesDETest = function(data.list, m, tau_k_mu, tau_mu, prior_Alter, prior_Null){
+old_bayesDETest = function(data.list, m, tau_k_mu, tau_mu, prior_Alter, prior_Null){
   bf_multiple_01 = list()
   for(j in rownames(data.list[[1]])){
     in.list = data.list %>% map(as.matrix(~.x[j,]))
