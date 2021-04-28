@@ -114,7 +114,7 @@ bayesDETest = function(priors, detailed = FALSE){
   for(j in rownames(data.list[[1]])){ # For each gene
     in.list = data.list %>% purrr::map(~ as.matrix(.x[j,]))
     names(in.list) = paste0("Y_", 1:length(in.list))
-    bf_multiple_01[[j]] <- new_Bayes_factor_multiple(Y = in.list, priors, detailed)
+    bf_multiple_01[[j]] <- Bayes_factor_multiple(Y = in.list, priors, detailed)
   }
 
   bf_multiple_01 = do.call(rbind, lapply(bf_multiple_01, as.data.frame)) #Converts to data frame
