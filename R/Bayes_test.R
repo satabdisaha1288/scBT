@@ -64,7 +64,7 @@ calc_alt_null = function(sce, method = 'fixed', de.prob = 0.25){
 #' @return INSERT DESCRIPTION
 #' 
 #' @export
-new_sceCalcPriors = function(sce){
+sceCalcPriors = function(sce){
   #Initialize list, tables, and vectors
   data.list = list()
   m = vector()
@@ -105,7 +105,7 @@ new_sceCalcPriors = function(sce){
 #' @return INSESRT DESCRIPTION - describe omega etc...
 #' 
 #' @export
-new_bayesDETest = function(priors, detailed = FALSE){
+bayesDETest = function(priors, detailed = FALSE){
   library(dplyr)
   data.list = priors$split.simulated
   #TODO: Look into estimating from real data to replace prior_Alter and prior_Null from KW/WRS/ANOVA. Add to priors step.
@@ -137,7 +137,7 @@ new_bayesDETest = function(priors, detailed = FALSE){
 #' @return output: A list having the different parts of the log-likelihood function, log 
 #' prior odds and the log Bayes factor test statistic
 #' @export
-new_Bayes_factor_multiple<-function(Y, prior, detailed = FALSE){
+Bayes_factor_multiple<-function(Y, prior, detailed = FALSE){
   a_sigma = prior$priors['a_sigma']
   b_sigma = prior$priors['b_sigma']
   a_w = prior$priors['a_w']
