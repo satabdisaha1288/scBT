@@ -2,19 +2,18 @@
 % Please edit documentation in R/newBayesTest.R
 \name{new_bayesDETest}
 \alias{new_bayesDETest}
-\title{TODO: NEEDS WORK/TESTING
-Performs a genewise ANOVA test on a SingleCellExperiment object}
+\title{INSERT DESCRIPTION}
 \usage{
 new_bayesDETest(priors, detailed = FALSE)
 }
 \arguments{
-\item{sce}{SingleCellExperiment object with a logcounts assay
-and Dose column in the cell metadata}
+\item{priors}{INSERT DESCRIPTION}
+
+\item{detailed}{A boolean denoting how much info to show in result}
 }
 \value{
-a vector of p values from the ANOVA test - describe omega etc...
+INSESRT DESCRIPTION - describe omega etc...
 }
 \description{
-TODO: NEEDS WORK/TESTING
-Performs a genewise ANOVA test on a SingleCellExperiment object
+INSERT DESCRIPTION
 }

@@ -9,16 +9,18 @@ runLRT(data.list)
 runLRT(data.list)
 }
 \arguments{
+\item{data.list}{INSERT DESCRIPTION}
+
 \item{sce}{SingleCellExperiment object with a logcounts assay
 and Dose column in the cell metadata}
 }
 \value{
 a vector of p values from the ANOVA test
 
-a vector of p values from the ANOVA test
+INSERT DESCRIPTION
 }
 \description{
 Performs a genewise ANOVA test on a SingleCellExperiment object
 
-Performs a genewise ANOVA test on a SingleCellExperiment object
+INSERT DESCRIPTION
 }

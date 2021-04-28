@@ -5,7 +5,7 @@
 #'
 #' @return A dataframe having the test statistic and p-values 
 #' @export 
-LRT_linearModel_reworked<-function(sce){
+LRT_linearModel<-function(sce){
   data = as.matrix(logcounts(sce))
   dose = as.numeric(as.character(colData(sce)$Dose))
   mydf<-data.frame(t(data),dose)
