@@ -7,30 +7,12 @@
 new_Bayes_factor_multiple(Y, prior, detailed = FALSE)
 }
 \arguments{
-\item{Y}{: list of size K (nlevels(dose_level)) of n (cells) times p(gene, in our case p=1)
+\item{Y}{list of size K (nlevels(dose_level)) of n (cells) times p(gene, in our case p=1)
 matrices of observed data having n cells and p genes in K treatment dose groups}
 
-\item{m}{: vector of group means}
+\item{prior}{INSERT DESCRIPTION}
 
-\item{m_0}{: grand_mean of m}
-
-\item{tau_k_mu}{}
-
-\item{K}{: number of dose groups}
-
-\item{tau_mu}{}
-
-\item{b_sigma}{}
-
-\item{a_sigma}{}
-
-\item{a_w}{}
-
-\item{b_w}{}
-
-\item{prior_alt}{}
-
-\item{prior_null}{}
+\item{detailed}{A boolean denoting how much info to show in result}
 }
 \value{
 output: A list having the different parts of the log-likelihood function, log
