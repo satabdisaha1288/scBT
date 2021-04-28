@@ -38,8 +38,8 @@ DETest = function(sce, method = "All", verbose = FALSE){
 
   if (method  == "BAYES" | method == "All"){
     if (verbose) {message("Running Bayes test...")}
-    priors = new_sceCalcPriors(sce)
-    DETest.list[["BAYES"]] = new_bayesDETest(priors)
+    priors = ceCalcPriors(sce)
+    DETest.list[["BAYES"]] = bayesDETest(priors)
   }
   if (method  == "LRT.linear" | method == "All"){
     if (verbose) {message("Running LRT linear test...")}
