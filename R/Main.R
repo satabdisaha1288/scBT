@@ -43,7 +43,7 @@ DETest = function(sce, method = "All", verbose = FALSE){
   }
   if (method  == "LRT.linear" | method == "All"){
     if (verbose) {message("Running LRT linear test...")}
-    DETest.list[["LRTLin"]] = LRT_linearModel_reworked(sce)
+    DETest.list[["LRTLin"]] = LRT_linearModel(sce)
   }
   if (method  == "LRT.multiple" | method == "All"){
     if (verbose) {message("Running LRT multiple test...")}
