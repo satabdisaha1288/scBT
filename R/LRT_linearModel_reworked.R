@@ -1,6 +1,7 @@
 #' Title Reworked version of LRT_linearModel.R (no-loops)
 #' @author Satabdi
-#' @param sce 
+#' @param sce SingleCellExperiment object with a logcounts assay 
+#' and Dose column in the cell metadata
 #'
 #' @return A dataframe having the test statistic and p-values 
 #' @export 
