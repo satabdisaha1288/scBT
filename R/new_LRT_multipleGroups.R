@@ -1,9 +1,8 @@
 #' INSERT DESCRIPTION
 #' 
-#' @param sce SingleCellExperiment object with a logcounts assay 
-#' and Dose column in the cell metadata
+#' @param data.list INSERT DESCRIPTION
 #' 
-#' @return a vector of p values from the ANOVA test
+#' @return INSERT DESCRIPTION
 #' 
 #' @export
 runLRT = function(data.list){
