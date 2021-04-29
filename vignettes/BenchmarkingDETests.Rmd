@@ -17,10 +17,24 @@ output:
 
 ```{r}
 # Load packages
-## TODO: Reduce requirements - look for redundancy
 suppressPackageStartupMessages({
   library(snseq.stats)
+  library(dplyr)
+  library(ggplot2)
+  library(SingleCellExperiment)
+  library(splatter)
+  library(MAST)
+  library(splattdr)
 })
+
+# Load an example dataset with simulated data
+data(params)
+sim.dose = c(0, 0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30)
+dose.prob = rep(1/9, 9)
+sim = splatSimulateDR(params, dose.names = sim.dose, dose.prob = dose.prob, verbose = FALSE)
+
+# Remove low abundance genes from dataset (expressed in at least 5% cells in each dose group)
+sim = filterLow(sim, pct.expressed = 0.05)
 ```
 # DETesting
 
@@ -29,7 +43,7 @@ suppressPackageStartupMessages({
 ## LRT_linear
 Describe
 ```{r}
-LRT.linear = DETest(sce, method = 'LRT.linear')
+LRT.linear = DETest(sim, method = 'LRT.linear')
 head(LRT.linear)
 ```
 

@@ -33,6 +33,7 @@ DETest = function(sce, method = "All", verbose = FALSE){
   checkmate::assertClass(sce, "SingleCellExperiment")
   #Check if dose column is there
   #Check that method is valid
+  stopifnot(validateDRsce(sce))
   
   DETest.list = list()
 
@@ -97,7 +98,7 @@ getDEGs = function(sce, DETestoutput, threshold = 0.05, bayes.threshold = 1/3, f
     if (ncol(DETestoutput[[test]]) == 1){
       merged.df = Reduce(merge, lapply(list(DETestoutput[[test]], fc.max, pz.min), function(x) data.frame(x, rn = row.names(x))))
       colnames(merged.df) = c("Gene", "pvalue", "fc.max", "pz.min")
-      filtered = merged.df %>% filter(pvalue <= threshold & fc.max >= fc.threshold & pz.min >= pct.expressed)
+      filtered = merged.df %>% filter(pvalue <= threshold & fc.max >= fc.threshold & pz.min <= (1-pct.expressed))
     } else if (test != 'LRTLin' & test != 'BAYES'){
       stopifnot(identical(dim(DETestoutput[[test]]), dim(fc)) == TRUE)
       DETestoutput[[test]] = DETestoutput[[test]][rownames(fc),]
@@ -106,12 +107,12 @@ getDEGs = function(sce, DETestoutput, threshold = 0.05, bayes.threshold = 1/3, f
       min.pval = data.frame(apply(DETestoutput[[test]], 1, function(x) min(x)))
       merged.df = Reduce(merge, lapply(list(min.pval, fc.max, pz.min), function(x) data.frame(x, rn = row.names(x))))
       colnames(merged.df) = c("Gene", "pvalue", "fc.max", "pz.min")
-      filtered = merged.df %>% filter(pvalue <= threshold & fc.max >= fc.threshold & pz.min >= pct.expressed)
+      filtered = merged.df %>% filter(pvalue <= threshold & fc.max >= fc.threshold & pz.min <= (1-pct.expressed))
     } else if (test == 'BAYES') {
       bayes_exp_bf = DETestoutput[[test]][,"exp_bf", drop = FALSE]
       merged.df = Reduce(merge, lapply(list(bayes_exp_bf, fc.max, pz.min), function(x) data.frame(x, rn = row.names(x))))
       colnames(merged.df) = c("Gene", "exp_bf", "fc.max", "pz.min")
-      filtered = merged.df %>% filter(exp_bf <= bayes.threshold & fc.max >= fc.threshold & pz.min >= pct.expressed)
+      filtered = merged.df %>% filter(exp_bf <= bayes.threshold & fc.max >= fc.threshold & pz.min <= (1-pct.expressed))
     }
     DEGenes.list[[test]] = filtered
   }
@@ -135,8 +136,44 @@ TruthFromSim = function(sim, fc.threshold = 0, pct.expressed = 0){
   pz.min = data.frame(pz.min = apply(pz, 1, function(x) min(x)))
   gene.meta = data.frame(rowData(sim))
   merged = Reduce(merge, lapply(list(gene.meta, fc.max, pz.min), function(x) data.frame(x, rn = row.names(x))))
-  merged.deg = merged %>% filter(DE_idx != 1 & fc.max >= fc.threshold & pz.min >= pct.expressed)
+  merged.deg = merged %>% filter(DE_idx != 1 & fc.max >= fc.threshold & pz.min <= (1-pct.expressed))
   merged.deg = merged.deg[,-1]
   return(merged.deg)
 }
 
+#' General function to run the statistical test abstracting much of the individual steps
+#' 
+#' @param sce SingleCellExperiment object with a logcounts assay 
+#' and Dose column in the cell metadata
+#' @param method the statistical test(s) to run on the sce object. Can be any of the following: Bayes, LRT.linear, LRT.multiple, ANOVA, KW, WRS, MAST, ChiSQ
+#' 
+#' @return a vector of p values from the ANOVA test
+#' 
+#' @export
+filterLow = function(sce, pct.expressed = 0){
+  pz = calcZeroP(sce)
+  pz.min = data.frame(pz.min =  apply(pz, 1, function(x) min(x)))
+  passFilt = rownames(pz.min %>% filter(pz.min <= (1-pct.expressed)))
+  sce = sce[passFilt,]
+  return(sce)
+} 
+
+
+#' General function to run the statistical test abstracting much of the individual steps
+#' 
+#' @param sce SingleCellExperiment object with a logcounts assay 
+#' and Dose column in the cell metadata
+#' @param method the statistical test(s) to run on the sce object. Can be any of the following: Bayes, LRT.linear, LRT.multiple, ANOVA, KW, WRS, MAST, ChiSQ
+#' 
+#' @return a vector of p values from the ANOVA test
+#' 
+#' @export
+validateDRsce = function(sce){
+  value = FALSE
+  checkmate::assertClass(sce, "SingleCellExperiment")
+  if ("Dose" %in% colnames(colData(sce))){
+    checkmate::assertClass(colData(sce)$Dose, "factor")
+    value = TRUE
+  }
+  return(value)
+}
