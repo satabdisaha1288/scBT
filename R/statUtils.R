@@ -45,8 +45,8 @@ runMAST <- function(sce){
   names(FN_dose) <- levels(Dose)[-1]
   
   for(i in levels(Dose)[-1]){
-    summaryDT[[i]] <- summaryDose[[i]]$datatable
-    fcHurdle[[i]] <- summaryDT[[i]][contrast == paste0("Dose",i) & component=='H',.(primerid, `Pr(>Chisq)`)] #logFC coefficients
+    summaryDT[[i]] <- summaryDose[[i]]['datatable']
+    fcHurdle[[i]] <- summaryDT[[i]][summaryDT[[i]]$contrast == paste0("Dose",i) & summaryDT[[i]]$component=='H',.(primerid, `Pr(>Chisq)`)] #logFC coefficients
     fcHurdle[[i]][,fdr:=p.adjust(`Pr(>Chisq)`, 'fdr')]
     fcHurdleSig[[i]] <- fcHurdle[[i]][fdr<.05 ]
     setorder(fcHurdleSig[[i]], fdr)
@@ -65,6 +65,7 @@ runMAST <- function(sce){
   return(m)
 }
 
+
 #' INSERT DESCRIPTION
 #' 
 #' @param sce SingleCellExperiment object with a logcounts assay 
@@ -73,14 +74,41 @@ runMAST <- function(sce){
 #' @return INSERT DESCRIPTION
 #' 
 #' @export
-clean_sce = function(sce){
-  library(Matrix)
-  assays(sce)$BatchCellMeans = NULL
-  assays(sce)$BaseCellMeans = NULL
-  assays(sce)$BCV = NULL
-  assays(sce)$CellMeans = NULL
-  assays(sce)$TrueCounts = NULL	
-  assays(sce)$counts = Matrix(assays(simDR[[vec_elem]])$counts, sparse = TRUE)
-  assays(sce)$logcounts = Matrix(assays(simDR[[vec_elem]])$logcounts, sparse = TRUE)
-  return(sce)
+runMASTDR = function(sce){
+  scaRaw <- FromMatrix(as.matrix(logcounts(sce)),
+                       data.frame(colData(sce)),
+                       data.frame(rowData(sce))
+  )
+  cdr <-colSums(assay(scaRaw) > 0)
+  colData(scaRaw)$cngeneson <- scale(cdr)
+  rowData(scaRaw)$symbolid <- rownames(rowData(sce))
+  Dose <- factor(colData(scaRaw)$Dose)
+  Dose <- relevel(Dose,"0")
+  colData(scaRaw)$Dose = Dose
+  zlmDose = zlm(~Dose + cngeneson, sca = scaRaw)
+  m <- rep(list(list()), times= nlevels(Dose)-1)
+  names(m) <- levels(Dose)[-1]
+  for(i in levels(Dose)[-1])
+  {
+    group <- paste0("Dose", i)
+    summaryDose <- summary(zlmDose, doLRT=group)
+    print(names(summaryDose[[1]]))
+    print(head(summaryDose[[1]]))
+    print(class(summaryDose[[1]]))
+    fcHurdle <- data.frame(
+      summaryDose[[1]] %>% 
+      dplyr::filter(contrast == group & component == "H")
+      )
+    fcHurdle$fdr <- p.adjust(fcHurdle$`Pr..Chisq`, 'fdr')
+    m[[i]] <- data.frame(FDR = fcHurdle$fdr)
+    rownames(m[[1]]) <- fcHurdle$primerid
+  }
+  
+  mast.out = do.call(cbind, lapply(m, data.frame))
+  colnames(mast.out) = paste0(colnames(mast.out), levels(Dose)[-1])
+  return(mast.out)
 }
+
+
+
+
