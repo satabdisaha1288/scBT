@@ -45,5 +45,6 @@ runChi <- function(sce){
 #
 #' @export
 split_tibble <- function(tibble, column = 'col') {
+  library(dplyr)
   tibble %>% split(., .[,column]) %>% lapply(., function(x) x[,setdiff(names(x),column)])
 }
