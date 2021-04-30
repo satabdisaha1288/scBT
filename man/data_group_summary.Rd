@@ -10,7 +10,7 @@ data_group_summary(data)
 \item{data}{a data object}
 }
 \value{
-a vector of p values from the ANOVA test
+INSETRT DESCRIPTION
 }
 \description{
 Summarises data by groups
