@@ -2,7 +2,7 @@
 #' 
 #' @param data a data object
 #' 
-#' @return a vector of p values from the ANOVA test
+#' @return INSETRT DESCRIPTION
 #' 
 #' @export
 data_group_summary<-function(data){
