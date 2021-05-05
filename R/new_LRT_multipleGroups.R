@@ -5,46 +5,18 @@
 #' @return INSERT DESCRIPTION
 #' 
 #' @export
-runLRT = function(data.list){
+LRT_multipleModel = function(data.list){
   lrt_multiple_01 = list()
   for(j in rownames(data.list[[1]])){
-    in.list = data.list %>% purrr::map(as.matrix(~.x[j,]))
+    in.list = data.list %>% purrr::map(~ as.matrix(.x[j,]))
     names(in.list) = paste0("Y_", 1:length(in.list))
-    lrt_multiple_01 = LRT_multiple_groups(in.list)
+    lrt_multiple_01[[j]] = LRT_multiple_groups(in.list)
   }
   
-  for (dose in names(data.list)){
-    data.list[[dose]] = as.matrix(data.list[[dose]])
-  }
-  #LRT_mult<-rep(list(list()),nrow(data[["0"]]))
-  # LRT_mult = list()
-  # data_ind = lapply(data.list, function(x) ifelse(x > 0, 1, 0))
-  # for(g in 1: nrow(data.list[["0"]])){
-  #   gene = rownames(data.list[["0"]])[g]
-  #   LRT_mult[[gene]]<-LRT_multiple_groups(data = list(data.list[["0"]][g,][data_ind[["0"]][g,] > 0],
-  #                                                     data.list[["0.01"]][g,][data_ind[["0.01"]][g,] > 0],
-  #                                                     data.list[["0.03"]][g,][data_ind[["0.03"]][g,] > 0],
-  #                                                     data.list[["0.1"]][g,][data_ind[["0.1"]][g,] > 0],
-  #                                                     data.list[["0.3"]][g,][data_ind[["0.3"]][g,] > 0],
-  #                                                     data.list[["1"]][g,][data_ind[["1"]][g,] > 0],
-  #                                                     data.list[["3"]][g,][data_ind[["3"]][g,] > 0],
-  #                                                     data.list[["10"]][g,][data_ind[["10"]][g,] > 0],
-  #                                                     data.list[["30"]][g,][data_ind[["30"]][g,] > 0]),
-  #                                         data_ind = list(data_ind[["0"]][g,],
-  #                                                         data_ind[["0.01"]][g,],
-  #                                                         data_ind[["0.03"]][g,],
-  #                                                         data_ind[["0.1"]][g,],
-  #                                                         data_ind[["0.3"]][g,],
-  #                                                         data_ind[["1"]][g,],
-  #                                                         data_ind[["3"]][g,],
-  #                                                         data_ind[["10"]][g,],
-  #                                                         data_ind[["30"]][g,]))
-  # }
-  # LRT_mult_p_value = sapply(LRT_mult,function(x) x[2,3])
-  # LRT_mult_p_value_adj = p.adjust(LRT_mult_p_value, method = "fdr")
-  # LRT.out = data.frame(pval = LRT_mult_p_value, pval.fdr = LRT_mult_p_value_adj)
-  # rownames(LRT.out) = names(LRT_mult_p_value_adj)
-  # return(LRT.out)
+  lrt_multiple.out = data.frame(t(do.call(cbind, lapply(lrt_multiple_01, data.frame))))
+  rownames(lrt_multiple.out) = names(lrt_multiple_01)
+  lrt_multiple.out$FDR = p.adjust(lrt_multiple.out$p.value.comb, 'fdr')
+  return(lrt_multiple.out)
 }
 
 
