@@ -85,13 +85,17 @@ runMASTDR = function(sce){
   Dose <- factor(colData(scaRaw)$Dose)
   Dose <- relevel(Dose,"0")
   colData(scaRaw)$Dose = Dose
-  zlmDose = zlm(~Dose + cngeneson, sca = scaRaw)
+  cngeneson = colData(scaRaw)$cngeneson
+  zlmDose = MAST::zlm(~Dose + cngeneson, scaRaw)
+  print(zlmDose)
+  print(summary(zlmDose))
+  print(names(zlmDose))
   m <- rep(list(list()), times= nlevels(Dose)-1)
   names(m) <- levels(Dose)[-1]
-  for(i in levels(Dose)[-1])
+  for(i in levels(Dose)[1])
   {
     group <- paste0("Dose", i)
-    summaryDose <- summary(zlmDose, doLRT=group)
+    summaryDose <- summary(zlmDose, doLRT="Dose0.01")
     print(names(summaryDose[[1]]))
     print(head(summaryDose[[1]]))
     print(class(summaryDose[[1]]))

@@ -1,0 +1,120 @@
+---
+title: "Benchmarking DE Tests"
+author: 
+  - "Rance Nault"
+  - "Satabdi Saha"
+package: "statsDR"
+data: "Last updated: April 12, 2021"
+output: 
+  BiocStyle::html_document:
+    toc: true
+    toc_float: true
+  vignette: >
+    %\VignetteIndexEntry{simple example}
+    %\VignetteEngine{knitr::rmarkdown}
+    %\VignetteEncoding{UTF-8}
+---
+
+```{r}
+# Load packages
+suppressPackageStartupMessages({
+  library(snseq.stats)
+  library(dplyr)
+  library(ggplot2)
+  library(SingleCellExperiment)
+  library(splatter)
+  library(MAST)
+  library(splattdr)
+})
+
+# Load an example dataset with simulated data
+data(params)
+sim.dose = c(0, 0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30)
+dose.prob = rep(1/9, 9)
+```
+
+
+```{r}
+params2 = params
+benchmark = list()
+for (s in 1:10){
+  print(s)
+  seed = sample(1:1000, 1)
+  params2@seed = seed
+  sim2 = splatSimulateDR(params2, dose.names = sim.dose, dose.prob = dose.prob, verbose = FALSE)
+  sim2 = filterLow(sim2, pct.expressed = 0.05)
+  DGEAnalysis = suppressWarnings(DETest(sim2, method = 'All', verbose = TRUE))
+  trueDEGs = TruthFromSim(sim2, fc.threshold = 0.0, pct.expressed = 0)  
+  significantGenes = getDEGs(sim2, DGEAnalysis, threshold = 0.05, fc.threshold = 0.0, bayes.threshold = 1/3, pct.expressed = 0.05)
+  benchmarkConfusionMat = benchmarkDETests(sim2, trueDEGs, significantGenes)
+  benchmark[[paste0('S',seed)]] = benchmarkConfusionMat
+}
+
+benchmark2 = list()
+for (s in c(0.1, 0.3, 0.5, 0.8, 1, 4, 10)){
+  print(s)
+  params2@batch.facLoc = rep(s, 27)
+  params2@batch.facScale = rep(s, 27)
+  sim2 = splatSimulateDR(params2, dose.names = sim.dose, dose.prob = dose.prob, verbose = FALSE)
+  sim2 = filterLow(sim2, pct.expressed = 0.05)
+  DGEAnalysis = suppressWarnings(DETest(sim2, method = 'All', verbose = TRUE))
+  trueDEGs = TruthFromSim(sim2, fc.threshold = 0.0, pct.expressed = 0)  
+  significantGenes = getDEGs(sim2, DGEAnalysis, threshold = 0.05, fc.threshold = 0.0, bayes.threshold = 1/3, pct.expressed = 0.05)
+  benchmarkConfusionMat = benchmarkDETests(sim2, trueDEGs, significantGenes)
+  benchmark2[[paste0('S',s)]] = benchmarkConfusionMat
+}
+```
+
+```{r fig.width = 7.5, fig.height = 3.8}
+ggplot(benchmark[[1]]$classification, aes(fill = result, y = value, x = tname)) +
+  geom_text(aes(label = value), position = position_dodge(width = 1),
+            size = 3, vjust = -0.5) +
+  geom_bar(position = "dodge", stat = "identity", color = 'black') + 
+  #scale_fill_manual(values = c('#e34242', '#c70000', '#58fc5b', '#04cc08')) +
+  theme_bw()
+```
+
+```{r fig.width = 7.5, fig.height = 3.8}
+ggplot(benchmark[[2]]$classification, aes(fill = result, y = value, x = tname)) +
+  geom_text(aes(label = value), position = position_dodge(width = 1),
+            size = 3, vjust = -0.5) +
+  geom_bar(position = "dodge", stat = "identity", color = 'black') + 
+  #scale_fill_manual(values = c('#e34242', '#c70000', '#58fc5b', '#04cc08')) +
+  theme_bw()
+```
+
+
+```{r fig.width = 7.5, fig.height = 3.8}
+ggplot(benchmark[[3]]$classification, aes(fill = result, y = value, x = tname)) +
+  geom_text(aes(label = value), position = position_dodge(width = 1),
+            size = 3, vjust = -0.5) +
+  geom_bar(position = "dodge", stat = "identity", color = 'black') + 
+  #scale_fill_manual(values = c('#e34242', '#c70000', '#58fc5b', '#04cc08')) +
+  theme_bw()
+```
+
+```{r fig.width = 18, fig.height = 6}
+benchmarked.flat = transpose(benchmark) %>% map(bind_rows)
+ggplot(data = benchmarked.flat$results, aes(x = test, y = value, fill = test)) +
+  facet_wrap(~metric, scales = 'free') +
+  geom_boxplot() + 
+  geom_jitter(color = 'black') +
+  theme_bw()
+```
+
+
+```{r fig.width = 18, fig.height = 6}
+benchmarked.flat = transpose(benchmark2) %>% map(bind_rows)
+ggplot(data = benchmarked.flat$results, aes(x = test, y = value, fill = test)) +
+  facet_wrap(~metric, scales = 'free') +
+  geom_boxplot() + 
+  geom_jitter(color = 'black') +
+  theme_bw()
+```
+
+
+
+
+
+
+
