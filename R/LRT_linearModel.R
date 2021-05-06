@@ -5,13 +5,13 @@
 #'
 #' @return A dataframe having the test statistic and p-values 
 #' @export 
-LRT_linearModel<-function(sce){
-  data = as.matrix(logcounts(sce))
-  dose = as.numeric(as.character(colData(sce)$Dose))
+LRT_linearModel <- function(sce){
+  data <- as.matrix(logcounts(sce))
+  dose <- as.numeric(as.character(colData(sce)$Dose))
   
-  output = apply(data, 1, function(x) runLRT_Linear(x, dose))
-  output = data.frame(t(output))
-  output$FDR = p.adjust(output$p.value.comb, 'fdr')
+  output <- apply(data, 1, function(x) runLRT_Linear(x, dose))
+  output <- data.frame(t(output))
+  output$FDR <- p.adjust(output$p.value.comb, 'fdr')
   return(output)
 }
 
@@ -23,7 +23,7 @@ LRT_linearModel<-function(sce){
 #'
 #' @return A dataframe having the test statistic and p-values 
 #' @export 
-runLRT_Linear = function(data, dose){
+runLRT_Linear <- function(data, dose){
   fit.logistic <- glm(ifelse(data > 0, 1, 0) ~ 1, family = binomial)
   fit.logistic.alt <- glm(ifelse(data > 0, 1, 0) ~ dose, family = binomial)
   fit.mean <- lm(data[which(data > 0)] ~ 1)
