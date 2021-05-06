@@ -19,7 +19,7 @@ LRT_multiple_groups <- function(data, data_ind){
   
   library(dplyr)
   
-  mu_null<- as.numeric(bind_rows(lapply(data, as.data.frame)) %>% colSums(na.rm=TRUE)/
+  mu_null <- as.numeric(bind_rows(lapply(data, as.data.frame)) %>% colSums(na.rm=TRUE)/
                          bind_rows(lapply(data_pos, as.data.frame)) %>% colSums(na.rm=TRUE))
   mu_group <- lapply(data, function(x) mean(x))
   
