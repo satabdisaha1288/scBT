@@ -11,9 +11,9 @@
 #' @export
 lrtest <- function(w.x, w.y, x, y){
   e.x <- sum(w.x)
-  e.y <-  sum(w.y)
-  n.x <-  length(w.x)
-  n.y <-  length(w.y)
+  e.y <- sum(w.y)
+  n.x <- length(w.x)
+  n.y <- length(w.y)
   stopifnot(e.x == length(x) && e.y == length(y))
   
   
@@ -21,11 +21,11 @@ lrtest <- function(w.x, w.y, x, y){
   p.x <- e.x/n.x
   p.y <- e.y/n.y
   
-  m0 <-  (sum(x)+sum(y))/(e.x+e.y)
-  mu.x <-  mean(x)
-  mu.y <-  mean(y)
+  m0 <- (sum(x)+sum(y))/(e.x+e.y)
+  mu.x <- mean(x)
+  mu.y <- mean(y)
   
-  Tstar <-  1+e.x*e.y/(e.x+e.y)* (mu.x - mu.y)^2/(sum((mu.x - x)^2) + sum((mu.y-y)^2))
+  Tstar <- 1+e.x*e.y/(e.x+e.y) * (mu.x - mu.y)^2/(sum((mu.x - x)^2) + sum((mu.y-y)^2))
   
   if(!is.finite(Tstar)){
     Tstar <- 1
@@ -43,12 +43,12 @@ lrtest <- function(w.x, w.y, x, y){
   logLR <- binom+norm
   
   maxsign <- c(binomsign, normsign)[which.min(c(binom, norm))]
-  resultvec <- c(-2*binom, binomsign, pchisq(-2*binom, 1, lower.tail=FALSE),
-                 -2*norm, normsign, pchisq(-2*norm, 1, lower.tail=FALSE),
-                 -2*logLR, maxsign, pchisq(-2*logLR, 2, lower.tail=FALSE))
-  result <- matrix(resultvec, nrow=3, ncol=3, dimnames=list(metric=c('lrstat', 'direction', 'p.value'), component=c('binom', 'norm', 'comb')))
-  result_comb<-cbind(rownames(data_0_filt_binary[i,]),-2*logLR, maxsign, pchisq(-2*logLR, 2, lower.tail=FALSE))
-  colnames(result_comb)<-c("Gene_name","lrstat","Direction","p-value")
+  resultvec <- c(-2*binom, binomsign, pchisq(-2*binom, 1, lower.tail = FALSE),
+                 -2*norm, normsign, pchisq(-2*norm, 1, lower.tail = FALSE),
+                 -2*logLR, maxsign, pchisq(-2*logLR, 2, lower.tail = FALSE))
+  result <- matrix(resultvec, nrow=3, ncol=3, dimnames=list(metric = c('lrstat', 'direction', 'p.value'), component=c('binom', 'norm', 'comb')))
+  result_comb <- cbind(rownames(data_0_filt_binary[i,]),-2*logLR, maxsign, pchisq(-2*logLR, 2, lower.tail=FALSE))
+  colnames(result_comb) <- c("Gene_name","lrstat","Direction","p-value")
   return(result_comb)
 }
 
@@ -60,7 +60,7 @@ lrtest <- function(w.x, w.y, x, y){
 #' 
 #' @export
 logProd <- function(prod, logand){
-  ifelse(prod==0, 0, prod*log(logand))
+  ifelse(prod == 0, 0, prod * log(logand))
 }
 
 #' Performs a genewise ANOVA test on a SingleCellExperiment object
@@ -71,16 +71,16 @@ logProd <- function(prod, logand){
 #' @return a vector of p values from the ANOVA test
 #' 
 #' @export
-runLRT = function(data.list){
+runLRT <- function(data.list){
   for (dose in names(data.list)){
-    data.list[[dose]] = as.matrix(data.list[[dose]])
+    data.list[[dose]] <- as.matrix(data.list[[dose]])
   }
-  #LRT_mult<-rep(list(list()),nrow(data[["0"]]))
-  LRT_mult = list()
-  data_ind = lapply(data.list, function(x) ifelse(x > 0, 1, 0))
+
+  LRT_mult <- list()
+  data_ind <- lapply(data.list, function(x) ifelse(x > 0, 1, 0))
   for(g in 1: nrow(data.list[["0"]])){
-    gene = rownames(data.list[["0"]])[g]
-    LRT_mult[[gene]]<-LRT_multiple_groups(data = list(data.list[["0"]][g,][data_ind[["0"]][g,] > 0],
+    gene <- rownames(data.list[["0"]])[g]
+    LRT_mult[[gene]] <- LRT_multiple_groups(data = list(data.list[["0"]][g,][data_ind[["0"]][g,] > 0],
                                                       data.list[["0.01"]][g,][data_ind[["0.01"]][g,] > 0],
                                                       data.list[["0.03"]][g,][data_ind[["0.03"]][g,] > 0],
                                                       data.list[["0.1"]][g,][data_ind[["0.1"]][g,] > 0],
@@ -99,10 +99,10 @@ runLRT = function(data.list){
                                                           data_ind[["10"]][g,],
                                                           data_ind[["30"]][g,]))
   }
-  LRT_mult_p_value = sapply(LRT_mult,function(x) x[2,3])
-  LRT_mult_p_value_adj = p.adjust(LRT_mult_p_value, method = "fdr")
-  LRT.out = data.frame(pval = LRT_mult_p_value, pval.fdr = LRT_mult_p_value_adj)
-  rownames(LRT.out) = names(LRT_mult_p_value_adj)
+  LRT_mult_p_value <- sapply(LRT_mult,function(x) x[2,3])
+  LRT_mult_p_value_adj <- p.adjust(LRT_mult_p_value, method = "fdr")
+  LRT.out <- data.frame(pval = LRT_mult_p_value, pval.fdr = LRT_mult_p_value_adj)
+  rownames(LRT.out) <- names(LRT_mult_p_value_adj)
   return(LRT.out)
 }
 
