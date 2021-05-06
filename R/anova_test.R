@@ -6,11 +6,11 @@
 #' @return a vector of p values from the ANOVA test
 #' 
 #' @export
-batchANOVA = function(sce){
-  data = as.matrix(logcounts(sce))
-  dose = colData(sce)$Dose
-  aov.pvalues = apply(data, 1, function(x) runAnova(x, dose))
-  aov.out = data.frame(aov.pvalues)
+batchANOVA <- function(sce){
+  data <- as.matrix(logcounts(sce))
+  dose <- colData(sce)$Dose
+  aov.pvalues <- apply(data, 1, function(x) runAnova(x, dose))
+  aov.out <- data.frame(aov.pvalues)
   return(aov.out)
 }
 
@@ -22,9 +22,9 @@ batchANOVA = function(sce){
 #' @return A p value from the ANOVA test
 #' 
 #' @export
-runAnova = function(data, dose){
-  my_data = data.frame(value = data, dose = dose)
-  res.aov = aov(value ~ dose, data = my_data)
-  aov.pvalue = summary(res.aov)[[1]][["Pr(>F)"]][1]
+runAnova <- function(data, dose){
+  my_data <- data.frame(value = data, dose = dose)
+  res.aov <- aov(value ~ dose, data = my_data)
+  aov.pvalue <- summary(res.aov)[[1]][["Pr(>F)"]][1]
   return(aov.pvalue)
 }
