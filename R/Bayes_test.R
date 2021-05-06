@@ -111,7 +111,8 @@ bayesDETest <- function(priors, detailed = FALSE){
   #TODO: Look into estimating from real data to replace prior_Alter and prior_Null from KW/WRS/ANOVA. Add to priors step.
 
   bf_multiple_01 <- list()
-  for(j in rownames(data.list[[1]])){ # For each gene
+  # For each gene
+  for(j in rownames(data.list[[1]])){ 
     in.list <- data.list %>% purrr::map(~ as.matrix(.x[j,]))
     names(in.list) <- paste0("Y_", 1:length(in.list))
     bf_multiple_01[[j]] <- Bayes_factor_multiple(Y = in.list, priors, detailed)
