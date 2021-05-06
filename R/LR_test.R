@@ -105,4 +105,3 @@ runLRT <- function(data.list){
   rownames(LRT.out) <- names(LRT_mult_p_value_adj)
   return(LRT.out)
 }
-
