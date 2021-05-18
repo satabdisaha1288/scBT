@@ -202,7 +202,12 @@ Bayes_factor_multiple <- function(Y, prior, detailed = FALSE){
     #k - dose group. Try to change to an apply(matrix)/lapply(listfromlist)/tapply/sapply(list)
     for(k in 1:K)
     {
-      ind_D0[k] <- (0.5) * log(1 + (tau_mu*R_colsum[k][j]))
+      if (is.nan(log(b_w + n[k] - R_colsum[k][j] - 1))){
+        a_w = 2
+        b_w = 5
+      }
+      
+      ind_D0[k]<- (0.5)*log(1+ (tau_mu*R_colsum[k][j]))
       
       ind_D3[k] <- (0.5) * (log(a_w + b_w + n[k] - 1) - log(a_w + R_colsum[k][j] - 1) -
                           log(b_w + n[k] - R_colsum[k][j] - 1))
