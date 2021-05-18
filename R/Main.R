@@ -35,39 +35,44 @@ DETest = function(sce, method = "All", verbose = FALSE){
   #Check that method is valid
   stopifnot(validateDRsce(sce))
   
+  if ("All" %in% method){
+    method = c('BAYES', 'LRT.linear', 'LRT.multiple', 'CHISQ', 'ANOVA',
+               'WRS', 'KW', 'MAST')
+  }
   DETest.list = list()
 
-  if (method  == "BAYES" | method == "All"){
+  #if (method  == "BAYES" | method == "All"){
+  if ("BAYES" %in% method){
     if (verbose) {message("Running Bayes test...")}
     priors = sceCalcPriors(sce)
     DETest.list[["BAYES"]] = bayesDETest(priors)
   }
-  if (method  == "LRT.linear" | method == "All"){
+  if ("LRT.linear" %in% method){
     if (verbose) {message("Running LRT linear test...")}
     DETest.list[["LRTLin"]] = LRT_linearModel(sce)
   }
-  if (method  == "LRT.multiple" | method == "All"){
+  if ("LRT.multiple" %in% method){  
     if (verbose) {message("Running LRT multiple test...")}
     priors = sceCalcPriors(sce)
     DETest.list[["LRTMult"]] = LRT_multipleModel(priors[[1]])
   }
-  if (method  == "CHISQ" | method == "All"){
+  if ("CHISQ" %in% method){
     if (verbose) {message("Running Chi Squared test...")}
     DETest.list[["CHISQ"]] = runChi(sce)
   }
-  if (method  == "ANOVA" | method == "All"){
+  if ("ANOVA" %in% method){
     if (verbose) {message("Running ANOVA test...")}
     DETest.list[['ANOVA']] = batchANOVA(sce)
   }
-  if (method  == "WRS" | method == "All"){
+  if ("WRS" %in% method){
     if (verbose) {message("Running Wilcoxon rank sum test...")}
     DETest.list[["WRS"]] = batchWRS(sce)
   }
-  if (method  == "KW" | method == "All"){
+  if ("KW" %in% method){
     if (verbose) {message("Running Kruskal Wallis test...")}
     DETest.list[['KW']] = batchKW(sce)
   }
-  if (method  == "MAST" | method == "All"){
+  if ("MAST" %in% method){
     if (verbose) {message("Running MAST test...")}
     #DETest.list[["MAST"]] = runMASTDR(sce)
   }
