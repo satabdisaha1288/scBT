@@ -8,45 +8,45 @@
 #' 
 #' @export
 LRT_multiple_groups <- function(data, data_ind){
-  data_pos<-lapply(data_ind,function(x) sum(x))
-  data_size<-lapply(data_ind,function(x) length(x))
-  dim.check<-Map("==",data_pos, lapply(data,function(x) length(x)))
+  data_pos <- lapply(data_ind,function(x) sum(x))
+  data_size <- lapply(data_ind,function(x) length(x))
+  dim.check <- Map("==",data_pos, lapply(data,function(x) length(x)))
   allSame <- function(x) length(unique(x)) == 1
   stopifnot(allSame(dim.check == TRUE))
   
   w_null <- unlist(Map("/",Reduce("+",data_pos), Reduce("+",data_size)))
-  w_group<- Map("/",data_pos,data_size) 
+  w_group <- Map("/",data_pos,data_size) 
   
   library(dplyr)
   
-  mu_null<- as.numeric(bind_rows(lapply(data, as.data.frame)) %>% colSums(na.rm=TRUE)/
+  mu_null <- as.numeric(bind_rows(lapply(data, as.data.frame)) %>% colSums(na.rm=TRUE)/
                          bind_rows(lapply(data_pos, as.data.frame)) %>% colSums(na.rm=TRUE))
-  mu_group<-lapply(data, function(x) mean(x))
+  mu_group <- lapply(data, function(x) mean(x))
   
-  ssg<-vector()
-  sse<-data
+  ssg <- vector()
+  sse <- data
   for(k in 1: length(data))
   {
-    ssg[k]<-data_pos[[k]]*((mu_group[[k]] - mu_null)^2)
+    ssg[k] <- data_pos[[k]]*((mu_group[[k]] - mu_null)^2)
     for(i in 1: length(data[[k]]))
     {
-      sse[[k]][i]<- (data[[k]][i]-mu_group[[k]])^2
+      sse[[k]][i] <- (data[[k]][i]-mu_group[[k]])^2
     }
   }
-  ss_between<-sum(ssg)
-  ss_residuals<-sum(sapply(sse, function(x) sum(x)))
-  Tstar <-  1+(ss_between/ss_residuals)
+  ss_between <- sum(ssg)
+  ss_residuals <- sum(sapply(sse, function(x) sum(x)))
+  Tstar <- 1+(ss_between/ss_residuals)
   
   if(!is.finite(Tstar)){
     Tstar <- 1
   }
   norm <- -((Reduce("+",data_pos))/2) * log(Tstar)
-  a<-vector()
-  b<-vector()
+  a <- vector()
+  b <- vector()
   for(k in 1: length(data))
   {
-    a[k]<-logProd(data_pos[[k]], w_null/w_group[[k]])
-    b[k]<-logProd(data_size[[k]]-data_pos[[k]], (1 - w_null)/(1- w_group[[k]]))
+    a[k] <- logProd(data_pos[[k]], w_null/w_group[[k]])
+    b[k] <- logProd(data_size[[k]]-data_pos[[k]], (1 - w_null)/(1- w_group[[k]]))
   }
   binom <- sum(a)+sum(b)
   
