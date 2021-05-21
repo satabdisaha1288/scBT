@@ -34,10 +34,13 @@ runChi <- function(sce){
     rownames(df[[j]]) <- levels(dose)
     colnames(df[[j]]) <- colnames(data_bin[["0.01"]])
   }
-  chisq_test <- lapply(df,function(x) chisq.test(x[,which(colSums(x)>0)]))
-  names(chisq_test) <- rownames(data[["0"]])
-  chisq_test_pvalue_adj <- p.adjust(sapply(chisq_test,function(x) x$p.value),method = "fdr")
-  chisq_test_pvalue_adj <- data.frame(chisq_test_pvalue_adj)
+  #chisq_test<-lapply(df,function(x) chisq.test(x[,which(colSums(x)>0)]))
+  chisq_test <- lapply(df,function(x) chisq.test(x[, which(colSums(x) > 0)]), 
+                       simulate.p.value = TRUE)
+  names(chisq_test)<-rownames(data[["0"]])
+  chisq_test_pvalue_adj<-p.adjust(sapply(chisq_test,function(x) x$p.value),method = "fdr")
+  chisq_test_pvalue_adj = data.frame(chisq_test_pvalue_adj)
+
   return(chisq_test_pvalue_adj)
 }
 
