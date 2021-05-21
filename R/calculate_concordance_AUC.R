@@ -2,17 +2,17 @@
 #' "Bias, robustness and scalability in single-cell differential
 #' expression analysis." Nature methods 15, no. 4 (2018): 255.
 #'
-#' @param DGEAnalysisoutput
+#' @param DETestoutput
 #' @author Satabdi Saha
 #' @return Normed area under the concordance curve.
 #' @export
 #'
 #' @examples
-calculate_concordance_AUC<-function(DGEAnalysisoutput)
+calculate_concordance_AUC<-function(DETestoutput)
 {
-  kw.data<-DGEAnalysis$KW
+  kw.data<-DETestoutput$KW
   kw.sort<-kw.data[order( kw.data[,1] ),,drop=FALSE]
-  aov.data<-DGEAnalysis$ANOVA
+  aov.data<-DETestoutput$ANOVA
   aov.sort<-aov.data[order( aov.data[,1] ),,drop=FALSE]
   h<-seq(1,100,1)
   common_dge<-vector(length = length(h))
