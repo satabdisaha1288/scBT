@@ -23,9 +23,12 @@ LRT_linearModel <- function(sce){
 #'
 #' @return A dataframe having the test statistic and p-values 
 #' @export 
-runLRT_Linear <- function(data, dose){
-  fit.logistic <- glm(ifelse(data > 0, 1, 0) ~ 1, family = binomial)
-  fit.logistic.alt <- glm(ifelse(data > 0, 1, 0) ~ dose, family = binomial)
+runLRT_Linear = function(data, dose){
+  #fit.logistic <- glm(ifelse(data > 0, 1, 0) ~ 1, family = binomial)
+  fit.logistic <- logistf(factor(ifelse(data > 0, 1, 0)) ~ 1)
+  #fit.logistic.alt <- glm(ifelse(data > 0, 1, 0) ~ dose, family = binomial)
+  fit.logistic.alt <- logistf(factor(ifelse(data > 0, 1, 0)) ~ dose)
+
   fit.mean <- lm(data[which(data > 0)] ~ 1)
   fit.mean.alt <- lm(data[which(data > 0)] ~ dose[which(data > 0)])
   loglik_normal <- (as.numeric(logLik(fit.mean)) - as.numeric(logLik(fit.mean.alt)))
