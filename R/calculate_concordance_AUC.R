@@ -3,7 +3,7 @@
 #' expression analysis." Nature methods 15, no. 4 (2018): 255.
 #'
 #' @param DGEAnalysisoutput
-#'
+#' @author Satabdi Saha
 #' @return Normed area under the concordance curve.
 #' @export
 #'
