@@ -131,13 +131,13 @@ bayesDETest <- function(priors, detailed = FALSE){
 
 #' Title Bayesian Test for dose-dependent differential gene expression analysis
 #' @author Satabdi Saha 
-#' @param Y list of size K (nlevels(dose_level)) of n (cells) times p(gene, in our case p=1) 
-#' matrices of observed data having n cells and p genes in K treatment dose groups 
-#' @param prior INSERT DESCRIPTION
-#' @param detailed A boolean denoting how much info to show in result
+#' @param Y list of size K (dose levels) of vectors length n (number of cells).
+#' @param prior priors object generated with sceCalcPriors.
+#' @param detailed logical output detailed statistical estimates.
 #'
-#' @return output: A list having the different parts of the log-likelihood function, log 
-#' prior odds and the log Bayes factor test statistic
+#' @return output A list having the estimates of the log-likelihood function, 
+#' log prior odds, and the log Bayes factor test statistic.
+#' 
 #' @export
 Bayes_factor_multiple <- function(Y, prior, detailed = FALSE){
   a_sigma <- prior$priors['a_sigma']
@@ -202,10 +202,12 @@ Bayes_factor_multiple <- function(Y, prior, detailed = FALSE){
     #k - dose group. Try to change to an apply(matrix)/lapply(listfromlist)/tapply/sapply(list)
     for(k in 1:K)
     {
+      suppressWarnings(
       if (is.nan(log(b_w + n[k] - R_colsum[k][j] - 1))){
         a_w = 2
         b_w = 5
       }
+      )
       
       ind_D0[k]<- (0.5)*log(1+ (tau_mu*R_colsum[k][j]))
       
