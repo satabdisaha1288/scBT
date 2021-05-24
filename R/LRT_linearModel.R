@@ -24,15 +24,16 @@ LRT_linearModel <- function(sce){
 #' @return A dataframe having the test statistic and p-values
 #' @export
 runLRT_Linear = function(data, dose){
-  fit.logistic <- glm(ifelse(data > 0, 1, 0) ~ 1, family = binomial)
-  #fit.logistic <- logistf(factor(ifelse(data > 0, 1, 0)) ~ 1)
-  fit.logistic.alt <- glm(ifelse(data > 0, 1, 0) ~ dose, family = binomial)
-  #fit.logistic.alt <- logistf(factor(ifelse(data > 0, 1, 0)) ~ dose)
+  #fit.logistic <- glm(ifelse(data > 0, 1, 0) ~ 1, family = binomial)
+  fit.logistic <- logistf::logistf(factor(ifelse(data > 0, 1, 0)) ~ 1)
+  #fit.logistic.alt <- glm(ifelse(data > 0, 1, 0) ~ dose, family = binomial)
+  fit.logistic.alt <- logistf::logistf(factor(ifelse(data > 0, 1, 0)) ~ dose)
 
   fit.mean <- lm(data[which(data > 0)] ~ 1)
   fit.mean.alt <- lm(data[which(data > 0)] ~ dose[which(data > 0)])
   loglik_normal <- (as.numeric(logLik(fit.mean)) - as.numeric(logLik(fit.mean.alt)))
-  loglik_logistic <- (as.numeric(logLik(fit.logistic)) - as.numeric(logLik(fit.logistic.alt)))
+  #loglik_logistic <- (as.numeric(logLik(fit.logistic)) - as.numeric(logLik(fit.logistic.alt)))
+  loglik_logistic <- fit.logistic$loglik[2] - fit.logistic.alt$loglik[2]
   resultvec <- c(-2*loglik_normal, pchisq(-2*loglik_normal, df = 3-2, lower.tail = FALSE),
                  -2*loglik_logistic, pchisq(-2*loglik_logistic, df = 2-1, lower.tail = FALSE),
                  -2 * (loglik_normal + loglik_logistic),
