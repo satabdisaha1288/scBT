@@ -29,7 +29,7 @@
 #' DEG.testing <- DETest(sim) 
 #' 
 #' @export
-DETest <- function(sce, method = "All", verbose = FALSE){
+DETest <- function(sce, method = "All", verbose = FALSE, fixed.priors = TRUE){
   checkmate::assertClass(sce, "SingleCellExperiment")
   #Check if dose column is there
   #Check that method is valid
@@ -44,8 +44,8 @@ DETest <- function(sce, method = "All", verbose = FALSE){
   #if (method  == "BAYES" | method == "All"){
   if ("BAYES" %in% method){
     if (verbose) {message("Running Bayes test...")}
-    priors <- sceCalcPriors(sce)
-    DETest.list[["BAYES"]] <- bayesDETest(priors)
+    priors <- sceCalcPriors(sce, fixed.priors = fixed.priors)
+    DETest.list[["BAYES"]] <- bayesDETest(priors, detailed = TRUE)
   }
   if ("LRT.linear" %in% method){
     if (verbose) {message("Running LRT linear test...")}
@@ -233,4 +233,58 @@ benchmarkDETests <- function(sce, dge.true, dge.list){
   colnames(df.results) <- c('metric', 'test', 'value')
   
   return(list(classification = df.confusionMat, results = df.results))
+}
+
+
+#' General function to run the statistical test abstracting much of the individual steps
+#' 
+#' @param sce SingleCellExperiment object with a logcounts assay 
+#' and Dose column in the cell metadata
+#' @param method the statistical test(s) to run on the sce object. Can be any of the following: Bayes, LRT.linear, LRT.multiple, ANOVA, KW, WRS, MAST, ChiSQ
+#' 
+#' @return a vector of p values from the ANOVA test
+#' 
+#' @export
+runPRROC <- function(sim, DETestoutput, idx = 1){
+  true_model <- rowData(sim)[,"Model"]
+  true_model <- ifelse(true_model== "Unchanged", 0, 1)
+  wfg<- c(runif(300,min=0.5,max=1),runif(500,min=0,max=0.5))
+  sigColVec = c('BAYES' = 'exp_bf', 'LRTLin' = 'FDR', 'LRTMult' = 'FDR', 
+                'CHISQ' = 'chisq_test_pvalue_adj','ANOVA' = 'aov.pvalues', 
+                'KW' = 'kw.pvalues')
+  roc.list = list()
+  pr.list = list()
+  na = names(sigColVec)[c(1,5,6)]
+  for (ref_test in na){
+    fg = DETestoutput[[ref_test]][,sigColVec[ref_test]][true_model == 1]
+    bg = DETestoutput[[ref_test]][,sigColVec[ref_test]][true_model == 0]
+    lab <- c(rep(1,length(fg)),rep(0,length(bg)))
+    X_test <- c(fg, bg)
+    wroc_test <- roc.curve(scores.class0 = X_test, weights.class0 = lab, 
+                           curve = TRUE, max.compute = T, min.compute = T, 
+                           rand.compute = T)
+    pr_test <- pr.curve(scores.class0 = X_test, weights.class0 = lab, curve = TRUE,
+                        max.compute = T, min.compute = T, rand.compute = T)
+    
+    roc.list[[ref_test]] = data.frame(
+      FPR = wroc_test$curve[, 1],
+      Sensitivity = wroc_test$curve[, 2],
+      Threshold = wroc_test$curve[, 3],
+      auc = wroc_test$auc,
+      test = ref_test,
+      identifier = idx
+    )
+    
+    pr.list[[ref_test]] = data.frame(
+      Recall = pr_test$curve[, 1],
+      Precision = pr_test$curve[, 2],
+      Threshold = pr_test$curve[, 3],
+      auc = pr_test$auc.integral,
+      test = ref_test,
+      identifier = idx
+    )
+  }
+  roc.curves = do.call(rbind, roc.list)
+  pr.curves = do.call(rbind, pr.list)
+  return(list(ROC = roc.curves, PR = pr.curves))
 }
