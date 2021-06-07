@@ -7,16 +7,15 @@
 Bayes_factor_multiple(Y, prior, detailed = FALSE)
 }
 \arguments{
-\item{Y}{list of size K (nlevels(dose_level)) of n (cells) times p(gene, in our case p=1)
-matrices of observed data having n cells and p genes in K treatment dose groups}
+\item{Y}{list of size K (dose levels) of vectors length n (number of cells).}
 
-\item{prior}{INSERT DESCRIPTION}
+\item{prior}{priors object generated with sceCalcPriors.}
 
-\item{detailed}{A boolean denoting how much info to show in result}
+\item{detailed}{logical output detailed statistical estimates.}
 }
 \value{
-output: A list having the different parts of the log-likelihood function, log
-prior odds and the log Bayes factor test statistic
+output A list having the estimates of the log-likelihood function,
+log prior odds, and the log Bayes factor test statistic.
 }
 \description{
 Title Bayesian Test for dose-dependent differential gene expression analysis

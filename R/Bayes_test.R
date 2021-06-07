@@ -64,7 +64,7 @@ calc_alt_null <- function(sce, method = 'fixed', de.prob = 0.25){
 #' @return INSERT DESCRIPTION
 #'
 #' @export
-sceCalcPriors <- function(sce){
+sceCalcPriors <- function(sce, fixed.priors = TRUE){
   #Initialize list, tables, and vectors
   data.list <- list()
   m <- vector()
@@ -92,6 +92,10 @@ sceCalcPriors <- function(sce){
 
     alt <- calc_alt_null(sce)
     priors <- c(sigma, omega, c(tau_k_mu = length(dose_vec)), alt)
+    if (fixed.priors){
+      priors['a_w'] = 2
+      priors['b_w'] = 2
+    }
     #TODO: Add the prior fixed or calculated to the returned values.
   }
   return(list(split.simulated = data.list, priors = priors, m = m))
@@ -218,11 +222,11 @@ Bayes_factor_multiple <- function(Y, prior, detailed = FALSE){
         ((a_w + R_colsum[k][j] - 1) * log(a_w + R_colsum[k][j] - 1)) -
         ((b_w + n[k] - R_colsum[k][j] - 1)*log(b_w + n[k] - R_colsum[k][j] - 1))
     }
-
     # We should then be able to remove this from being put into a list element [j]. We can also remove the [j] from all the inputs/variables
     l_D0[j] <- (1-K) + ((0.5*(1-K))* log (2 * pi)) + colSums(ind_D0) - ((0.5)* log(1+ (tau_mu* R_grand_sum[j]))) +
                (a_sigma + (0.5 *R_grand_sum[j])) * (- log ((1/b_sigma) + (0.5*A_tot[j])) +
               (log ((1/b_sigma)+  (0.5* sum(A)[j]))))
+
     l_D1[j] <- 0.5*(log(a_w + R_grand_sum[j] - 1) + log(b_w + sum(n) - R_grand_sum[j] - 1) -
                      log(a_w + b_w + sum(n) - 1))
     l_D2[j] <- ((a_w + R_grand_sum[j]-1)* log(a_w + R_grand_sum[j]-1)) -
