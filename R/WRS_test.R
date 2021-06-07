@@ -11,6 +11,11 @@ batchWRS <- function(sce){
   wrs.pvalues <- apply(data, 1, function(x) runWRS(x, dose))
   rownames(wrs.pvalues) <- levels(dose)[-1]
   wrs.pvalues <- t(wrs.pvalues)
+  wrs.adj <- apply(wrs.pvalues, 2, function(x) p.adjust(x, 'fdr'))
+  colnames(wrs.adj) <- paste0(colnames(wrs.adj), 'adjusted.p')
+  wrs.adj$adjusted.p <- apply(wrs.adj, 1, function(x) min(x))
+  wrs = cbind(wrs.pvalues, wrs.adj)
+  
   return(wrs.pvalues)
 }
 
