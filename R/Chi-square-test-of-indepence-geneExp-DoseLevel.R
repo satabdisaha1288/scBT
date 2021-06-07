@@ -39,6 +39,7 @@ runChi <- function(sce){
                                                  simulate.p.value = TRUE))
 
   names(chisq_test)<-rownames(data[["0"]])
+
   adjusted.p <- p.adjust(sapply(chisq_test,function(x) x$p.value),method = "fdr")
   chisq_test_pvalue_adj = data.frame(adjusted.p)
 
