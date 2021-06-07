@@ -12,7 +12,7 @@
 #' @examples
 calculate_threshold_posterior_prob_null_bayes<-function(DETest_output_Bayes,kappa,alpha){
   #Posterior probabilities under the null
-  posterior_prob_null<-1/(1+DETest_output_Bayes)
+  posterior_prob_null<-1/(1+ (1/DETest_output_Bayes))
   names(posterior_prob_null)<-names(DETest_output_Bayes)
   jkappa<-list()
   ckappa<-vector()
