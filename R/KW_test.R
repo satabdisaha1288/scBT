@@ -11,6 +11,7 @@ batchKW <- function(sce){
   dose <- colData(sce)[,"Dose"]
   kw.pvalues <- apply(data, 1, function(x) runKW(x, dose))
   kw.out <- data.frame(kw.pvalues)
+  kw.out$adjusted.p <- p.adjust(kw.out$kw.pvalues)
   return(kw.out)
 }
 
