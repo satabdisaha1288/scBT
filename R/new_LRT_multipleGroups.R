@@ -15,7 +15,7 @@ LRT_multipleModel <- function(data.list){
   
   lrt_multiple.out <- data.frame(t(do.call(cbind, lapply(lrt_multiple_01, data.frame))))
   rownames(lrt_multiple.out) <- names(lrt_multiple_01)
-  lrt_multiple.out$FDR <- p.adjust(lrt_multiple.out$p.value.comb, 'fdr')
+  lrt_multiple.out$adjusted.p <- p.adjust(lrt_multiple.out$p.value.comb, 'fdr')
   return(lrt_multiple.out)
 }
 

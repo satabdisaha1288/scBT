@@ -10,7 +10,7 @@ data_group_summary(data)
 \item{data}{a data object}
 }
 \value{
-INSETRT DESCRIPTION
+INSERT DESCRIPTION
 }
 \description{
 Summarises data by groups
