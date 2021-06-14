@@ -15,8 +15,8 @@ opt_par<- function(x)
 }
 par_null<-opt_par(optim_output_null$par)
 par_alt<-opt_par(optim_output_alt$par)
-prior.null=0.9
-prior.alt=0.1
+prior.null=0.75
+prior.alt=0.25
 bayes.factor<-calculate_BF(Y, par_null , par_alt, prior.null, prior.alt)
 thresh<-calculate_threshold_posterior_prob_null_bayes(bayes.factor$BF,seq(0.01,1,0.01),0.05)
 posterior_prob_null<-1/(1+ (1/bayes.factor$BF))
