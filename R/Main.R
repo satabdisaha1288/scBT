@@ -46,6 +46,9 @@ DETest <- function(sce, method = "All", verbose = FALSE, fixed.priors = TRUE){
     if (verbose) {message("Running Bayes test...")}
     priors <- sceCalcPriors(sce, fixed.priors = fixed.priors)
     DETest.list[["BAYES"]] <- bayesDETest(priors, detailed = TRUE)
+    posteriorProb <- calcPosteriorProbNull(DETest.list[['BAYES']])
+    DETest.list[['BAYES']]$adjusted.p <- posteriorProb$ppH0
+    DETest.list[['ppH0']] <- posteriorProb$max_kappa
   }
   if ("LRT.linear" %in% method){
     if (verbose) {message("Running LRT linear test...")}
@@ -78,6 +81,8 @@ DETest <- function(sce, method = "All", verbose = FALSE, fixed.priors = TRUE){
   }
   return(DETest.list)
 }
+
+
 
 
 #' General function to run the statistical test abstracting much of the individual steps
@@ -245,46 +250,134 @@ benchmarkDETests <- function(sce, dge.true, dge.list){
 #' @return a vector of p values from the ANOVA test
 #' 
 #' @export
-runPRROC <- function(sim, DETestoutput, idx = 1){
-  true_model <- rowData(sim)[,"Model"]
-  true_model <- ifelse(true_model== "Unchanged", 0, 1)
-  wfg<- c(runif(300,min=0.5,max=1),runif(500,min=0,max=0.5))
-  sigColVec = c('BAYES' = 'exp_bf', 'LRTLin' = 'FDR', 'LRTMult' = 'FDR', 
-                'CHISQ' = 'chisq_test_pvalue_adj','ANOVA' = 'aov.pvalues', 
-                'KW' = 'kw.pvalues')
-  roc.list = list()
-  pr.list = list()
-  na = names(sigColVec)[c(1,5,6)]
-  for (ref_test in na){
-    fg = DETestoutput[[ref_test]][,sigColVec[ref_test]][true_model == 1]
-    bg = DETestoutput[[ref_test]][,sigColVec[ref_test]][true_model == 0]
-    lab <- c(rep(1,length(fg)),rep(0,length(bg)))
-    X_test <- c(fg, bg)
-    wroc_test <- roc.curve(scores.class0 = X_test, weights.class0 = lab, 
-                           curve = TRUE, max.compute = T, min.compute = T, 
-                           rand.compute = T)
-    pr_test <- pr.curve(scores.class0 = X_test, weights.class0 = lab, curve = TRUE,
-                        max.compute = T, min.compute = T, rand.compute = T)
-    
-    roc.list[[ref_test]] = data.frame(
-      FPR = wroc_test$curve[, 1],
-      Sensitivity = wroc_test$curve[, 2],
-      Threshold = wroc_test$curve[, 3],
-      auc = wroc_test$auc,
-      test = ref_test,
-      identifier = idx
-    )
-    
-    pr.list[[ref_test]] = data.frame(
-      Recall = pr_test$curve[, 1],
-      Precision = pr_test$curve[, 2],
-      Threshold = pr_test$curve[, 3],
-      auc = pr_test$auc.integral,
-      test = ref_test,
-      identifier = idx
-    )
-  }
-  roc.curves = do.call(rbind, roc.list)
-  pr.curves = do.call(rbind, pr.list)
-  return(list(ROC = roc.curves, PR = pr.curves))
+benchmarkSim <- function(sim, test, p.threshold, fc.threshold = 0, pct.expressed = 0){
+  # Estimate base parameters from simulated data
+  fc <- abs(calcFC(sim))
+  pz <- calcZeroP(sim)
+  
+  test <- test[rownames(rowData(sim)), , drop = FALSE]
+  indexed.df <- data.frame(
+    adjusted.p = test$adjusted.p,
+    truth = as.factor(ifelse(rowData(sim)$Model == 'Unchanged', 0, 1)),
+    fc.max = data.frame(fc.max = apply(fc, 1, function(x) max(x))),
+    pz.min = data.frame(pz.min = apply(pz, 1, function(x) min(x))) 
+  )  
+  
+  pos.idx <- which(indexed.df$adjusted.p <= p.threshold &
+                    indexed.df$fc.max >= fc.threshold &
+                    indexed.df$pz.min <= (1-pct.expressed)
+                  )
+  
+  pos <- indexed.df[pos.idx,]
+  neg <- indexed.df[-pos.idx,]
+  
+  classification = data.frame(
+    TP = sum(pos$truth == 1),
+    FP = sum(pos$truth == 0),
+    TN = sum(neg$truth == 0),
+    FN = sum(neg$truth == 1)
+  )
+  
+  return(classification)
 }
+
+
+#' General function to run the statistical test abstracting much of the individual steps
+#' 
+#' @param sce SingleCellExperiment object with a logcounts assay 
+#' and Dose column in the cell metadata
+#' @param method the statistical test(s) to run on the sce object. Can be any of the following: Bayes, LRT.linear, LRT.multiple, ANOVA, KW, WRS, MAST, ChiSQ
+#' 
+#' @return a vector of p values from the ANOVA test
+#' 
+#' @export
+benchmark <- function(indexed.df, test, p.threshold, fc.threshold, pct.expressed){
+  # Estimate base parameters from simulated data
+  
+  pos.idx <- which(indexed.df$adjusted.p <= p.threshold &
+                     indexed.df$fc.max >= fc.threshold &
+                     indexed.df$pz.min <= (1-pct.expressed)
+  )
+  
+  pos <- indexed.df[pos.idx,]
+  neg <- indexed.df[-pos.idx,]
+  
+  classification = c(
+    TP = sum(pos$truth == 1),
+    FP = sum(pos$truth == 0),
+    TN = sum(neg$truth == 0),
+    FN = sum(neg$truth == 1),
+    p.thresh = p.threshold
+  )
+  
+  return(classification)
+}
+
+
+#' General function to run the statistical test abstracting much of the individual steps
+#' 
+#' @param sce SingleCellExperiment object with a logcounts assay 
+#' and Dose column in the cell metadata
+#' @param method the statistical test(s) to run on the sce object. Can be any of the following: Bayes, LRT.linear, LRT.multiple, ANOVA, KW, WRS, MAST, ChiSQ
+#' 
+#' @return a vector of p values from the ANOVA test
+#' 
+#' @export
+benchmarkSim_batch <- function(sim, test, fc.threshold = 0, pct.expressed = 0){
+  # Estimate base parameters from simulated data
+  fc <- abs(calcFC(sim))
+  pz <- calcZeroP(sim)
+  
+  test <- test[rownames(rowData(sim)), , drop = FALSE]
+  pval.list <- sort(unique(test$adjusted.p))
+  
+  indexed.df <- data.frame(
+    adjusted.p = test$adjusted.p,
+    truth = as.factor(ifelse(rowData(sim)$Model == 'Unchanged', 0, 1)),
+    fc.max = data.frame(fc.max = apply(fc, 1, function(x) max(x))),
+    pz.min = data.frame(pz.min = apply(pz, 1, function(x) min(x))) 
+  )  
+
+  classification.batch <- sapply(pval.list, 
+                                 function(x) benchmark(indexed.df, 
+                                                       test, x,
+                                                       fc.threshold,
+                                                       pct.expressed)
+  )
+  classification.batch <- data.frame(t(classification.batch))
+  return(classification.batch)
+}
+
+
+#' General function to run the statistical test abstracting much of the individual steps
+#' 
+#' @param sce SingleCellExperiment object with a logcounts assay 
+#' and Dose column in the cell metadata
+#' @param method the statistical test(s) to run on the sce object. Can be any of the following: Bayes, LRT.linear, LRT.multiple, ANOVA, KW, WRS, MAST, ChiSQ
+#' 
+#' @return a vector of p values from the ANOVA test
+#' 
+#' @export
+summarizeBenchmark <- function(benchmark.out){
+  TP = benchmark.out$TP
+  FP = benchmark.out$FP
+  TN = benchmark.out$TN
+  FN = benchmark.out$FN
+  
+  df <- data.frame(
+    FPR = FP/(FP + TN),
+    TPR = TP/(TP + FN),
+    FNR = FN/(FN + TP),
+    TNR = TN/(TN + FP),
+    precision = TP/(TP + FP),
+    recall = TP/(TP + FN),
+    ppv = TP/(TP + FP),
+    npv = TN/(TN + FN),
+    balancedAcc = ((TP/(TP + FN)) + (TN/(TN + FP)))/2 
+  )
+  df.out = cbind(benchmark.out, df)
+  return(df.out)
+}
+
+
+
