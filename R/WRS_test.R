@@ -11,15 +11,15 @@ batchWRS <- function(sce){
   wrs.pvalues <- apply(data, 1, function(x) runWRS(x, dose))
   rownames(wrs.pvalues) <- levels(dose)[-1]
   wrs.pvalues <- t(wrs.pvalues)
-  wrs.adj <- apply(wrs.pvalues, 2, function(x) p.adjust(x, 'fdr'))
-  colnames(wrs.adj) <- paste0(colnames(wrs.adj), 'adjusted.p')
+  wrs.adj <- data.frame(apply(wrs.pvalues, 2, function(x) p.adjust(x, 'fdr')))
+  colnames(wrs.adj) <- paste0('adjusted.p.', colnames(wrs.adj))
   wrs.adj$adjusted.p <- apply(wrs.adj, 1, function(x) min(x))
   wrs = cbind(wrs.pvalues, wrs.adj)
   
-  return(wrs.pvalues)
+  return(wrs)
 }
 
-#' Performs a Wilcoxon Rank Sum test on a logcounts vactor for a given dose
+#' Performs a Wilcoxon Rank Sum test on a logcounts vector for a given dose
 #'
 #' @param data The logcounts vector
 #' @param dose The dose to analyze
