@@ -4,7 +4,7 @@
 \alias{sceCalcPriors}
 \title{INSERT DESCRIPTION}
 \usage{
-sceCalcPriors(sce)
+sceCalcPriors(sce, fixed.priors = TRUE)
 }
 \arguments{
 \item{sce}{SingleCellExperiment object with a logcounts assay

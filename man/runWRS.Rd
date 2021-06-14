@@ -2,7 +2,7 @@
 % Please edit documentation in R/WRS_test.R
 \name{runWRS}
 \alias{runWRS}
-\title{Performs a Wilcoxon Rank Sum test on a logcounts vactor for a given dose}
+\title{Performs a Wilcoxon Rank Sum test on a logcounts vector for a given dose}
 \usage{
 runWRS(data, dose)
 }
@@ -15,5 +15,5 @@ runWRS(data, dose)
 A p value from the Wilcoxon Rank Sum test
 }
 \description{
-Performs a Wilcoxon Rank Sum test on a logcounts vactor for a given dose
+Performs a Wilcoxon Rank Sum test on a logcounts vector for a given dose
 }
