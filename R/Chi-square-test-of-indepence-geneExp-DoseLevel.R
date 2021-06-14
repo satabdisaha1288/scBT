@@ -41,9 +41,9 @@ runChi <- function(sce){
   names(chisq_test)<-rownames(data[["0"]])
 
   adjusted.p <- p.adjust(sapply(chisq_test,function(x) x$p.value),method = "fdr")
-  chisq_test_pvalue_adj = data.frame(adjusted.p)
+  chisq_test_pvalue_adj = data.frame(adjusted.p = adjusted.p)
 
-  return(adjusted.p)
+  return(chisq_test_pvalue_adj)
 }
 
 #' Chi-square test of independence for binned gene expression data
