@@ -64,6 +64,30 @@ calc_alt_null <- function(sce, method = 'fixed', de.prob = 0.25){
 #' @return INSERT DESCRIPTION
 #'
 #' @export
+DoseMatrix2List <- function(sce) {
+  data.list <- list()
+  data <- t(as.matrix(logcounts(sce)))
+  gene.metadata <- rowData(sce)
+  cell.metadata <- colData(sce)
+  dose_vec <- sort(unique(cell.metadata$Dose))
+  
+  for (dose in dose_vec){
+    data.list[[dose]] <- data[which(cell.metadata$Dose == dose),]
+  }
+  
+  return(data.list)
+}
+
+# Bayes analysis functions
+
+#' INSERT DESCRIPTION
+#'
+#' @param sce SingleCellExperiment object with a logcounts assay
+#' and Dose column in the cell metadata
+#'
+#' @return INSERT DESCRIPTION
+#'
+#' @export
 sceCalcPriors <- function(sce, fixed.priors = TRUE){
   #Initialize list, tables, and vectors
   data.list <- list()

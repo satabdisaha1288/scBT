@@ -42,13 +42,43 @@ DETest <- function(sce, method = "All", verbose = FALSE, fixed.priors = TRUE){
   DETest.list = list()
 
   #if (method  == "BAYES" | method == "All"){
+  if ("BAYESold" %in% method){
+    if (verbose) {message("Running Old Bayes test...")}
+    priors <- sceCalcPriors(sce, fixed.priors = fixed.priors)
+    DETest.list[["BAYESold"]] <- bayesDETest(priors, detailed = TRUE)
+    posteriorProb <- calcPosteriorProbNull(DETest.list[['BAYES']])
+    DETest.list[['BAYESold']]$adjusted.p <- posteriorProb$ppH0
+    DETest.list[['ppH0old']] <- posteriorProb$max_kappa
+  }
   if ("BAYES" %in% method){
     if (verbose) {message("Running Bayes test...")}
-    priors <- sceCalcPriors(sce, fixed.priors = fixed.priors)
-    DETest.list[["BAYES"]] <- bayesDETest(priors, detailed = TRUE)
-    posteriorProb <- calcPosteriorProbNull(DETest.list[['BAYES']])
-    DETest.list[['BAYES']]$adjusted.p <- posteriorProb$ppH0
-    DETest.list[['ppH0']] <- posteriorProb$max_kappa
+    Y <- DoseMatrix2List(sce)
+    optim_output_null <- optim(par = runif(6, -1.25, 1.25),   # Applying optim
+                               fn = log.lklh.marginal.null,
+                               Y = Y,
+                               control = list(maxit=1000), method="L-BFGS-B", upper=rep(5, 6),
+                               lower=rep(-5, 6))
+    optim_output_alt <- optim(par = runif(6, -1.25, 1.25),   # Applying optim
+                              fn = log.lklh.marginal.alt,
+                              Y = Y,
+                              control = list(maxit=1000), method="L-BFGS-B", upper=rep(5, 6),
+                              lower=rep(-5, 6))
+    opt_par <- function(x) {
+      opt_par<-c(x[1], exp(x[-1]))
+      return(opt_par)
+    }
+    
+    par_null <- opt_par(optim_output_null$par)
+    par_alt <- opt_par(optim_output_alt$par)
+    prior.null <- 0.9
+    prior.alt <- 0.1
+    bayes.factor <- calculate_BF(Y, par_null , par_alt, prior.null, prior.alt)
+    DETest.list[["ppH0"]] <- calculate_threshold_posterior_prob_null_bayes(bayes.factor$BF,seq(0.01,1,0.01),0.05)
+    posterior_prob_null <- 1/(1+ (1/bayes.factor$BF))
+    
+    bayes.out <- data.frame(do.call('cbind', bayes.factor))
+    bayes.out$adjusted.p <- posterior_prob_null
+    DETest.list[["BAYES"]] <- bayes.out
   }
   if ("LRT.linear" %in% method){
     if (verbose) {message("Running LRT linear test...")}
