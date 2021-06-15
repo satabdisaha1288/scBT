@@ -1,4 +1,4 @@
-#Y is a Data list of K (number of dose groups) matrices having dimension n (cells) times p (genes)
+i#Y is a Data list of K (number of dose groups) matrices having dimension n (cells) times p (genes)
 Y<-readRDS("data_sim.rds")
 optim_output_null <- optim(par = runif(6, -1.25, 1.25),   # Applying optim
                            fn = log.lklh.marginal.null,
