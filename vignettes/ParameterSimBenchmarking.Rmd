@@ -50,6 +50,20 @@ parameter.updates <- expand.grid(
   libscale = libscale
 )
 parameter.updates$TestName <- paste0("TEST", 1:nrow(parameter.updates))
+parameter.updates$seed <- sample(1:10000, nrow(parameter.updates))
+
+reps <- data.frame(
+  FacLoc = rep(0.5, 10),
+  FacScale = rep(0.5, 10),
+  CellN = rep(500, 10),
+  deProb = rep(0.25, 10),
+  deDown = rep(0.5, 10),
+  libscale = rep(1.3, 10),
+  TestName = paste0("RepTest", seq(1:10)),
+  seed = sample(1:10000, 10)
+)
+
+parameter.updates <- rbind(reps, parameter.updates)
 ```
 
 
@@ -76,9 +90,65 @@ for (n in 1:nrow(parameter.updates)){
   params@nCells = parameter.updates$CellN[n]*9
   params@de.prob = parameter.updates$deProb[n]
   params@de.downProb = parameter.updates$deDown[n]
+  params@seed = parameter.updates$seed[n]
   
   sim = splatSimulateDR(params, dose.names = sim.dose, dose.prob = dose.prob, lib.scale = 1.3, verbose = FALSE)
   DGE1[[parameter.updates$TestName[n]]] = DETest(sim, method = c("All"), fixed.priors = FALSE, verbose = TRUE)
+  
+  ######## MAST #####
+  sce = sim
+  scaRaw <- FromMatrix(as.matrix(logcounts(sce)),
+                      data.frame(colData(sce)),
+                      data.frame(rowData(sce))
+  )
+  cdr <- colSums(assay(scaRaw) > 0)
+  colData(scaRaw)$cngeneson <- scale(cdr)
+  #filterCrit = with(colData(scaRaw), cngeneson > 1)
+  rowData(scaRaw)$symbolid <- rownames(rowData(sce))
+  Dose <- factor(colData(scaRaw)$Dose)
+  Dose <- relevel(Dose,"0")
+  colData(scaRaw)$Dose <- Dose
+  zlmDose <- zlm(~Dose + cngeneson, sca = scaRaw)
+  
+  summaryDose <- rep(list(list()), times = nlevels(Dose)-1)
+  names(summaryDose) <- levels(Dose)[-1]
+  for(i in levels(Dose)[-1])
+  {
+    summaryDose[[i]] <- summary(zlmDose, doLRT=paste0("Dose",i))
+  }
+  
+  summaryDT <- rep(list(data.table::data.table()),times=nlevels(Dose)-1)
+  names(summaryDT) <- levels(Dose)[-1]
+  fcHurdle <- rep(list(data.table::data.table()),times=nlevels(Dose)-1)
+  names(fcHurdle) <- levels(Dose)[-1]
+  fcHurdleSig <- rep(list(data.table::data.table()),times=nlevels(Dose)-1)
+  names(fcHurdleSig) <- levels(Dose)[-1]
+  fcHurdleNonSig <- rep(list(data.table::data.table()),times=nlevels(Dose)-1)
+  names(fcHurdleSig) <- levels(Dose)[-1]
+  TP_dose <- rep(list(data.table::data.table()),times=nlevels(Dose)-1)
+  names(TP_dose) <- levels(Dose)[-1]
+  FP_dose <- rep(list(data.table::data.table()),times=nlevels(Dose)-1)
+  names(FP_dose) <- levels(Dose)[-1]
+  TN_dose <- rep(list(data.table::data.table()),times=nlevels(Dose)-1)
+  names(TN_dose) <- levels(Dose)[-1]
+  FN_dose <- rep(list(data.table::data.table()),times=nlevels(Dose)-1)
+  names(FN_dose) <- levels(Dose)[-1]
+  
+  for(i in levels(Dose)[-1]){
+    summaryDT[[i]] <- data.frame(summaryDose[[i]]['datatable'])
+    fcHurdle[[i]] <- summaryDT[[i]] %>% 
+      filter(datatable.contrast == paste0("Dose",i) & datatable.component == 'H') %>% 
+      select(datatable.primerid, datatable.Pr..Chisq.)
+    fcHurdle[[i]]$FDR <- p.adjust(fcHurdle[[i]]$datatable.Pr..Chisq., 'fdr')
+  }
+  
+  mast.out <- do.call(cbind, lapply(fcHurdle, data.frame))
+  mast.final <- mast.out[,grepl('FDR', colnames(mast.out))]
+  rownames(mast.final) <- mast.out[, 1]
+  mast.final$adjusted.p <- apply(mast.final, 1, function(x) min(x))
+  DGE1[[parameter.updates$TestName[n]]][['MAST']] <- mast.final
+  ###### END MAST ####
+  
   pHH0[[parameter.updates$TestName[n]]] <- DGE1[[parameter.updates$TestName[n]]]$ppH0
   saveRDS(DGE1, file = 'DGE1.051521.RData')
   saveRDS(pHH0, file = 'ppH0.05.15.21.RData')
