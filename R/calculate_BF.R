@@ -64,7 +64,7 @@ calculate_BF <- function(Y, par_null , par_alt, prior.null, prior.alt)
   for(k in 1:K)
   {
     l12gr[,k]<- -lbeta(par_alt[5] + R_colsum[,k] , par_alt[6] + n[k] - R_colsum[,k]) +
-      lbeta(par_alt[5],par[6])
+      lbeta(par_alt[5],par_alt[6])
   }
   dimnames(l12gr)<-dimnames(R_colsum)
   l12<- rowSums(l12gr)

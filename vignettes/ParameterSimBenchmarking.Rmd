@@ -1,0 +1,205 @@
+---
+title: "Benchmarking DE Tests"
+author: 
+  - "Rance Nault"
+  - "Satabdi Saha"
+package: "statsDR"
+data: "Last updated: April 12, 2021"
+output: 
+  BiocStyle::html_document:
+    toc: true
+    toc_float: true
+  vignette: >
+    %\VignetteIndexEntry{simple example}
+    %\VignetteEngine{knitr::rmarkdown}
+    %\VignetteEncoding{UTF-8}
+---
+
+```{r}
+suppressPackageStartupMessages({
+  library("splattdr")
+  library("snseq.stats")
+  library("dplyr")
+  library("DescTools")
+  library("ggplot2")
+  library("MAST")
+})
+
+data(params)
+
+sim.dose = c(0, 0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30)
+dose.prob = rep(1/9, 9)
+
+params@nGenes = 2000
+```
+
+
+```{r}
+FacLoc <- c(3, 1, 0.5)
+FacScale <- c(2, 1, 0.5)
+CellN <- c(100, 500, 1000)
+deProb <- c(0.1, 0.25, 0.5)
+deDownProb <- c(0.1, 0.25, 0.5)
+libscale <- c(1, 3)
+parameter.updates <- expand.grid(
+  FacLoc = FacLoc,
+  FacScale = FacScale,
+  CellN = CellN,
+  deProb = deProb,
+  deDown = deDownProb,
+  libscale = libscale
+)
+parameter.updates$TestName <- paste0("TEST", 1:nrow(parameter.updates))
+```
+
+
+```{r}
+DGE1 = list()
+DGE2 = list()
+FC = list()
+AUC1 = list()
+AUC2 = list()
+AUPR1 = list()
+AUPR2 = list()
+B.LIST = list()
+pHH0 = list()
+AUC3 = list()
+AUC4 = list()
+AUPR3 = list()
+AUPR4 = list()
+B.LIST2 = list()
+
+for (n in 1:nrow(parameter.updates)){
+  print(n)
+  params@de.facLoc = rep(parameter.updates$FacLoc[n], params@nBatches)
+  params@de.facScale = rep(parameter.updates$FacScale[n], params@nBatches)
+  params@nCells = parameter.updates$CellN[n]*9
+  params@de.prob = parameter.updates$deProb[n]
+  params@de.downProb = parameter.updates$deDown[n]
+  
+  sim = splatSimulateDR(params, dose.names = sim.dose, dose.prob = dose.prob, lib.scale = 1.3, verbose = FALSE)
+  DGE1[[parameter.updates$TestName[n]]] = DETest(sim, method = c("All"), fixed.priors = FALSE, verbose = TRUE)
+  pHH0[[parameter.updates$TestName[n]]] <- DGE1[[parameter.updates$TestName[n]]]$ppH0
+  saveRDS(DGE1, file = 'DGE1.051521.RData')
+  saveRDS(pHH0, file = 'ppH0.05.15.21.RData')
+  
+  benchmark.list = list()
+  for (t in names(DGE1[[parameter.updates$TestName[n]]])[-c(1)]){
+    for (fc in c(0, 0.40)){
+      for (pct in c(0, 0.05)){
+        name <- paste0(t, '_', fc, '_', pct)
+        benchmark <- benchmarkSim_batch(sim, DGE1[[parameter.updates$TestName[n]]][[t]], fc.threshold = fc, pct.expressed = pct)
+        summary <- summarizeBenchmark(benchmark)
+        summary$test = t
+        summary$fc = fc
+        summary$pct = pct
+        benchmark.list[[name]] = summary
+        saveRDS(benchmark.list, file = 'benchmark.list.061521.RData')
+      }
+    }
+  }
+
+  B.LIST[[parameter.updates$TestName[n]]] = do.call('rbind', benchmark.list)
+
+  AUC1[[parameter.updates$TestName[n]]] = B.LIST[[parameter.updates$TestName[n]]] %>% filter(fc == 0 & pct == 0.05) %>% group_by(test) %>% summarise(auc = AUC(FPR, TPR))
+  AUPR1[[parameter.updates$TestName[n]]] = B.LIST[[parameter.updates$TestName[n]]] %>% filter(fc == 0 & pct == 0.05) %>% group_by(test) %>% summarise(auc = AUC(precision, recall))
+  
+  AUC2[[parameter.updates$TestName[n]]] = B.LIST[[parameter.updates$TestName[n]]] %>% filter(fc == 0 & pct == 0) %>% group_by(test) %>% summarise(auc = AUC(FPR, TPR))
+  AUPR2[[parameter.updates$TestName[n]]] = B.LIST[[parameter.updates$TestName[n]]] %>% filter(fc == 0 & pct == 0) %>% group_by(test) %>% summarise(auc = AUC(precision, recall))
+}
+```
+
+
+```{r}
+AUC1B <- AUC1
+for (auc in names(AUC1)){
+  AUC1B[[auc]] <- data.frame(AUC1B[[auc]])
+  AUC1B[[auc]]$stat <- auc
+  AUC1B[[auc]] <- cbind(
+    AUC1B[[auc]],
+    parameter.updates[which(parameter.updates$TestName == auc), ]
+    )
+}
+AUC1B <- do.call('rbind', AUC1B)
+ggplot(data = AUC1B, aes(x = test, y = auc)) +
+  geom_violin() +
+  geom_jitter(size = 2, aes(color = factor(FacLoc))) +
+  theme_bw()
+
+AUC1BRANK <- AUC1B %>% arrange(TestName, desc(auc)) %>% group_by(TestName) %>% mutate(rank = row_number())
+ggplot(data = AUC1BRANK, aes(x = test, y = rank)) +
+  geom_violin() +
+  geom_jitter(size = 2) +
+  labs(x = element_blank(), y = 'AUC Rank (1-7)', title = 'All Genes') +
+  theme_bw()
+
+```
+
+```{r}
+AUC2B <- AUC2
+for (auc in names(AUC2)){
+  AUC2B[[auc]] <- data.frame(AUC2B[[auc]])
+  AUC2B[[auc]]$stat <- auc
+  AUC2B[[auc]] <- cbind(
+    AUC2B[[auc]],
+    parameter.updates[which(parameter.updates$TestName == auc), ]
+    )
+}
+AUC2B <- do.call('rbind', AUC2B)
+ggplot(data = AUC2B, aes(x = test, y = auc)) +
+  geom_violin() +
+  geom_jitter(size = 2, aes(color = factor(TestName))) +
+  theme_bw()
+
+AUC2BRANK <- AUC2B %>% arrange(TestName, desc(auc)) %>% group_by(TestName) %>% mutate(rank = row_number())
+ggplot(data = AUC2BRANK, aes(x = test, y = rank)) +
+  geom_violin() +
+  geom_jitter(size = 2) +
+  labs(x = element_blank(), y = 'AUC Rank (1-7)', title = 'Percent expressed >= 5%') +
+  theme_bw()
+```
+
+```{r}
+AUPR1B <- AUPR1
+for (auc in names(AUPR1)){
+  AUPR1B[[auc]] <- data.frame(AUPR1B[[auc]])
+  AUPR1B[[auc]]$stat <- auc
+  AUPR1B[[auc]] <- cbind(
+    AUPR1B[[auc]],
+    parameter.updates[which(parameter.updates$TestName == auc), ]
+    )
+}
+AUPR1B <- do.call('rbind', AUPR1B)
+ggplot(data = AUPR1B, aes(x = test, y = auc)) +
+  geom_violin() +
+  geom_jitter(size = 2, aes(color = factor(FacLoc))) +
+  theme_bw()
+```
+
+```{r}
+AUPR2B <- AUPR2
+for (auc in names(AUPR2)){
+  AUPR2B[[auc]] <- data.frame(AUPR2B[[auc]])
+  AUPR2B[[auc]]$stat <- auc
+  AUPR2B[[auc]] <- cbind(
+    AUPR2B[[auc]],
+    parameter.updates[which(parameter.updates$TestName == auc), ]
+    )
+}
+AUPR2B <- do.call('rbind', AUPR2B)
+ggplot(data = AUPR2B, aes(x = test, y = auc)) +
+  geom_violin() +
+  geom_jitter(size = 2, aes(color = factor(TestName))) +
+  theme_bw()
+```
+
+```{r}
+ggplot(data = B.LIST$TEST1 %>% filter(fc == 0 & pct == 0), aes(x = FPR, y = TPR, color = test)) +
+  geom_line(size = 1.4) +
+  geom_abline(intercept = 0, slope = 1) +
+  theme_bw()
+```
+
+
+
+

@@ -7,7 +7,7 @@
 #' @export
 #'
 #' @examples
-log.lklh.marginal.null <- function(par)
+log.lklh.marginal.null <- function(par, Y)
 {
   ## DO NOT CHANGE
   #K: number of dose groups
