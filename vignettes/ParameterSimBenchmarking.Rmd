@@ -33,39 +33,9 @@ dose.prob = rep(1/9, 9)
 params@nGenes = 2000
 ```
 
-
 ```{r}
-FacLoc <- c(3, 1, 0.5)
-FacScale <- c(2, 1, 0.5)
-CellN <- c(100, 500, 1000)
-deProb <- c(0.1, 0.25, 0.5)
-deDownProb <- c(0.1, 0.25, 0.5)
-libscale <- c(1, 3)
-parameter.updates <- expand.grid(
-  FacLoc = FacLoc,
-  FacScale = FacScale,
-  CellN = CellN,
-  deProb = deProb,
-  deDown = deDownProb,
-  libscale = libscale
-)
-parameter.updates$TestName <- paste0("TEST", 1:nrow(parameter.updates))
-parameter.updates$seed <- sample(1:10000, nrow(parameter.updates))
-
-reps <- data.frame(
-  FacLoc = rep(0.5, 10),
-  FacScale = rep(0.5, 10),
-  CellN = rep(500, 10),
-  deProb = rep(0.25, 10),
-  deDown = rep(0.5, 10),
-  libscale = rep(1.3, 10),
-  TestName = paste0("RepTest", seq(1:10)),
-  seed = sample(1:10000, 10)
-)
-
-parameter.updates <- rbind(reps, parameter.updates)
+parameter.updates <- read.table('ParTestsCombos.txt', header = TRUE, sep = '\t')
 ```
-
 
 ```{r}
 DGE1 = list()
@@ -244,6 +214,13 @@ ggplot(data = AUPR1B, aes(x = test, y = auc)) +
   geom_violin() +
   geom_jitter(size = 2, aes(color = factor(FacLoc))) +
   theme_bw()
+
+AUPR1BRANK <- AUPR1B %>% arrange(TestName, desc(auc)) %>% group_by(TestName) %>% mutate(rank = row_number())
+ggplot(data = AUC2BRANK, aes(x = test, y = rank)) +
+  geom_violin() +
+  geom_jitter(size = 2) +
+  labs(x = element_blank(), y = 'AUC Rank (1-7)', title = 'Percent expressed >= 5%') +
+  theme_bw()
 ```
 
 ```{r}
@@ -260,6 +237,13 @@ AUPR2B <- do.call('rbind', AUPR2B)
 ggplot(data = AUPR2B, aes(x = test, y = auc)) +
   geom_violin() +
   geom_jitter(size = 2, aes(color = factor(TestName))) +
+  theme_bw()
+
+AUPR2BRANK <- AUPR2B %>% arrange(TestName, desc(auc)) %>% group_by(TestName) %>% mutate(rank = row_number())
+ggplot(data = AUC2BRANK, aes(x = test, y = rank)) +
+  geom_violin() +
+  geom_jitter(size = 2) +
+  labs(x = element_blank(), y = 'AUC Rank (1-7)', title = 'Percent expressed >= 5%') +
   theme_bw()
 ```
 
