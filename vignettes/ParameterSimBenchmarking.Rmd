@@ -41,19 +41,12 @@ parameter.updates <- read.table('ParTestsCombos.txt', header = TRUE, sep = '\t')
 
 ```{r}
 DGE1 = list()
-DGE2 = list()
-FC = list()
 AUC1 = list()
 AUC2 = list()
 AUPR1 = list()
 AUPR2 = list()
 B.LIST = list()
 pHH0 = list()
-AUC3 = list()
-AUC4 = list()
-AUPR3 = list()
-AUPR4 = list()
-B.LIST2 = list()
 
 for (n in 1:nrow(parameter.updates)){
   print(n)
@@ -122,8 +115,8 @@ for (n in 1:nrow(parameter.updates)){
   ###### END MAST ####
   
   pHH0[[parameter.updates$TestName[n]]] <- DGE1[[parameter.updates$TestName[n]]]$ppH0
-  saveRDS(DGE1, file = 'DGE1.051521.RData')
-  saveRDS(pHH0, file = 'ppH0.05.15.21.RData')
+  saveRDS(DGE1, file = 'DGE1.062221.RData')
+  saveRDS(pHH0, file = 'ppH0.062221.RData')
   
   benchmark.list = list()
   for (t in names(DGE1[[parameter.updates$TestName[n]]])[-c(1)]){
@@ -142,12 +135,17 @@ for (n in 1:nrow(parameter.updates)){
   }
 
   B.LIST[[parameter.updates$TestName[n]]] = do.call('rbind', benchmark.list)
+  saveRDS(B.LIST, file = 'B.LIST.062221.RData')
 
   AUC1[[parameter.updates$TestName[n]]] = B.LIST[[parameter.updates$TestName[n]]] %>% filter(fc == 0 & pct == 0.05) %>% group_by(test) %>% summarise(auc = AUC(FPR, TPR))
+  saveRDS(AUC1, file = 'AUC1.062221.RData')
   AUPR1[[parameter.updates$TestName[n]]] = B.LIST[[parameter.updates$TestName[n]]] %>% filter(fc == 0 & pct == 0.05) %>% group_by(test) %>% summarise(auc = AUC(precision, recall))
+  saveRDS(AUPR1, file = 'AUPR1.062221.RData')
   
   AUC2[[parameter.updates$TestName[n]]] = B.LIST[[parameter.updates$TestName[n]]] %>% filter(fc == 0 & pct == 0) %>% group_by(test) %>% summarise(auc = AUC(FPR, TPR))
+  saveRDS(AUC2, file = 'AUC2.062221.RData')
   AUPR2[[parameter.updates$TestName[n]]] = B.LIST[[parameter.updates$TestName[n]]] %>% filter(fc == 0 & pct == 0) %>% group_by(test) %>% summarise(auc = AUC(precision, recall))
+  saveRDS(AUPR2, file = 'AUPR2.062221.RData')
 }
 ```
 
@@ -174,7 +172,6 @@ ggplot(data = AUC1BRANK, aes(x = test, y = rank)) +
   geom_jitter(size = 2) +
   labs(x = element_blank(), y = 'AUC Rank (1-7)', title = 'All Genes') +
   theme_bw()
-
 ```
 
 ```{r}
@@ -248,14 +245,5 @@ ggplot(data = AUC2BRANK, aes(x = test, y = rank)) +
   labs(x = element_blank(), y = 'AUC Rank (1-7)', title = 'Percent expressed >= 5%') +
   theme_bw()
 ```
-
-```{r}
-ggplot(data = B.LIST$TEST1 %>% filter(fc == 0 & pct == 0), aes(x = FPR, y = TPR, color = test)) +
-  geom_line(size = 1.4) +
-  geom_abline(intercept = 0, slope = 1) +
-  theme_bw()
-```
-
-
 
 
