@@ -24,10 +24,11 @@ suppressPackageStartupMessages({
   library("ggplot2")
   library("MAST")
 })
+```
 
-#data(params)
-p <- readRDS('/mnt/home/naultran/drSims/params.list.RData')
-params <- p[[1]]
+
+```{r}
+data(params)
 
 sim.dose = c(0, 0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30)
 dose.prob = rep(1/9, 9)
@@ -40,6 +41,7 @@ parameter.updates <- read.table('ParTestsCombos.txt', header = TRUE, sep = '\t')
 ```
 
 ```{r}
+# Create empty lists to append and save outputs
 DGE1 = list()
 AUC1 = list()
 AUC2 = list()
@@ -50,8 +52,11 @@ pHH0 = list()
 
 for (n in 1:nrow(parameter.updates)){
   print(n)
-  params@de.facLoc = rep(parameter.updates$FacLoc[n], params@nBatches)
-  params@de.facScale = rep(parameter.updates$FacScale[n], params@nBatches)
+  params@nBatches = length(sim.dose)*3
+  params@batch.facLoc = rep(0.1, params@nBatches)
+  params@batch.facScale = rep(0.1, params@nBatches)
+  params@de.facLoc = parameter.updates$FacLoc[n]
+  params@de.facScale = parameter.updates$FacScale[n]
   params@nCells = parameter.updates$CellN[n]*9
   params@de.prob = parameter.updates$deProb[n]
   params@de.downProb = parameter.updates$deDown[n]
@@ -115,8 +120,12 @@ for (n in 1:nrow(parameter.updates)){
   ###### END MAST ####
   
   pHH0[[parameter.updates$TestName[n]]] <- DGE1[[parameter.updates$TestName[n]]]$ppH0
+  fc.calc[[parameter.updates$TestName[n]]] <- calcFC(sim)
+  pz.calc[[parameter.updates$TestName[n]]] <- calcZeroP(sim)
   saveRDS(DGE1, file = 'DGE1.062221.RData')
   saveRDS(pHH0, file = 'ppH0.062221.RData')
+  saveRDS(fc.calc, file = 'fc.calc.062221.RData')
+  saveRDS(pz.calc, file = 'pz.calc.062221.RData')
   
   benchmark.list = list()
   for (t in names(DGE1[[parameter.updates$TestName[n]]])[-c(1)]){
@@ -146,6 +155,11 @@ for (n in 1:nrow(parameter.updates)){
   saveRDS(AUC2, file = 'AUC2.062221.RData')
   AUPR2[[parameter.updates$TestName[n]]] = B.LIST[[parameter.updates$TestName[n]]] %>% filter(fc == 0 & pct == 0) %>% group_by(test) %>% summarise(auc = AUC(precision, recall))
   saveRDS(AUPR2, file = 'AUPR2.062221.RData')
+  
+  AUC3[[parameter.updates$TestName[n]]] = B.LIST[[parameter.updates$TestName[n]]] %>% filter(fc == 0.4 & pct == 0) %>% group_by(test) %>% summarise(auc = AUC(FPR, TPR))
+  saveRDS(AUC3, file = 'AUC3.062221.RData')
+  AUPR3[[parameter.updates$TestName[n]]] = B.LIST[[parameter.updates$TestName[n]]] %>% filter(fc == 0.4 & pct == 0) %>% group_by(test) %>% summarise(auc = AUC(precision, recall))
+  saveRDS(AUPR3, file = 'AUPR3.062221.RData')
 }
 ```
 
@@ -187,7 +201,7 @@ for (auc in names(AUC2)){
 AUC2B <- do.call('rbind', AUC2B)
 ggplot(data = AUC2B, aes(x = test, y = auc)) +
   geom_violin() +
-  geom_jitter(size = 2, aes(color = factor(TestName))) +
+  geom_jitter(size = 2) +
   theme_bw()
 
 AUC2BRANK <- AUC2B %>% arrange(TestName, desc(auc)) %>% group_by(TestName) %>% mutate(rank = row_number())
@@ -235,7 +249,7 @@ for (auc in names(AUPR2)){
 AUPR2B <- do.call('rbind', AUPR2B)
 ggplot(data = AUPR2B, aes(x = test, y = auc)) +
   geom_violin() +
-  geom_jitter(size = 2, aes(color = factor(TestName))) +
+  geom_jitter(size = 2) +
   theme_bw()
 
 AUPR2BRANK <- AUPR2B %>% arrange(TestName, desc(auc)) %>% group_by(TestName) %>% mutate(rank = row_number())
