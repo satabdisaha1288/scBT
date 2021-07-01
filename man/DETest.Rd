@@ -4,7 +4,13 @@
 \alias{DETest}
 \title{Differential expression testing}
 \usage{
-DETest(sce, method = "All", verbose = FALSE, fixed.priors = TRUE)
+DETest(
+  sce,
+  method = "All",
+  verbose = TRUE,
+  fixed.priors = TRUE,
+  return.time = TRUE
+)
 }
 \arguments{
 \item{sce}{SingleCellExperiment object with a logcounts assay and a "Dose"
