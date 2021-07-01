@@ -23,6 +23,8 @@ LRT_linearModel <- function(sce){
 #' and Dose column in the cell metadata
 #'
 #' @return A dataframe having the test statistic and p-values
+#' 
+#' @import brglm
 #' @export
 runLRT_Linear = function(data, dose){
   if (max(data) == 0 | sum(data != 0) == 1){

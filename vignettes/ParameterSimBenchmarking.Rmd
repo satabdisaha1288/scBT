@@ -45,81 +45,98 @@ parameter.updates <- read.table('ParTestsCombos.txt', header = TRUE, sep = '\t')
 DGE1 = list()
 AUC1 = list()
 AUC2 = list()
+AUC3 = list()
 AUPR1 = list()
 AUPR2 = list()
+AUPR3 = list()
 B.LIST = list()
 pHH0 = list()
+timing.list = list()
+fc.calc = list()
+pz.calc = list()
 
-for (n in 1:nrow(parameter.updates)){
+#for (n in 1:nrow(parameter.updates)){
+for (n in 280:282){
   print(n)
   params@nBatches = length(sim.dose)*3
   params@batch.facLoc = rep(0.1, params@nBatches)
   params@batch.facScale = rep(0.1, params@nBatches)
-  params@de.facLoc = parameter.updates$FacLoc[n]
-  params@de.facScale = parameter.updates$FacScale[n]
-  params@nCells = parameter.updates$CellN[n]*9
-  params@de.prob = parameter.updates$deProb[n]
-  params@de.downProb = parameter.updates$deDown[n]
-  params@seed = parameter.updates$seed[n]
+  params@de.facLoc = as.numeric(parameter.updates$FacLoc[n])
+  params@de.facScale = as.numeric(parameter.updates$FacScale[n])
+  cellNums = as.numeric(unlist(strsplit(parameter.updates$CellN[n], split = ',')))
+  if (length(cellNums) == 1){
+    params@nCells = cellNums*9
+    dose.prob = rep(1/9, 9)
+  } else {
+    params@nCells = sum(cellNums)
+    dose.prob = cellNums/sum(cellNums)
+  }
+  params@de.prob = as.numeric(parameter.updates$deProb[n])
+  params@de.downProb = as.numeric(parameter.updates$deDown[n])
+  params@seed = as.numeric(parameter.updates$seed[n])
   
   sim = splatSimulateDR(params, dose.names = sim.dose, dose.prob = dose.prob, lib.scale = 1.3, verbose = FALSE)
   DGE1[[parameter.updates$TestName[n]]] = DETest(sim, method = c("All"), fixed.priors = FALSE, verbose = TRUE)
   
   ######## MAST #####
-  sce = sim
-  scaRaw <- FromMatrix(as.matrix(logcounts(sce)),
-                      data.frame(colData(sce)),
-                      data.frame(rowData(sce))
-  )
-  cdr <- colSums(assay(scaRaw) > 0)
-  colData(scaRaw)$cngeneson <- scale(cdr)
-  #filterCrit = with(colData(scaRaw), cngeneson > 1)
-  rowData(scaRaw)$symbolid <- rownames(rowData(sce))
-  Dose <- factor(colData(scaRaw)$Dose)
-  Dose <- relevel(Dose,"0")
-  colData(scaRaw)$Dose <- Dose
-  zlmDose <- zlm(~Dose + cngeneson, sca = scaRaw)
-  
-  summaryDose <- rep(list(list()), times = nlevels(Dose)-1)
-  names(summaryDose) <- levels(Dose)[-1]
-  for(i in levels(Dose)[-1])
-  {
-    summaryDose[[i]] <- summary(zlmDose, doLRT=paste0("Dose",i))
-  }
-  
-  summaryDT <- rep(list(data.table::data.table()),times=nlevels(Dose)-1)
-  names(summaryDT) <- levels(Dose)[-1]
-  fcHurdle <- rep(list(data.table::data.table()),times=nlevels(Dose)-1)
-  names(fcHurdle) <- levels(Dose)[-1]
-  fcHurdleSig <- rep(list(data.table::data.table()),times=nlevels(Dose)-1)
-  names(fcHurdleSig) <- levels(Dose)[-1]
-  fcHurdleNonSig <- rep(list(data.table::data.table()),times=nlevels(Dose)-1)
-  names(fcHurdleSig) <- levels(Dose)[-1]
-  TP_dose <- rep(list(data.table::data.table()),times=nlevels(Dose)-1)
-  names(TP_dose) <- levels(Dose)[-1]
-  FP_dose <- rep(list(data.table::data.table()),times=nlevels(Dose)-1)
-  names(FP_dose) <- levels(Dose)[-1]
-  TN_dose <- rep(list(data.table::data.table()),times=nlevels(Dose)-1)
-  names(TN_dose) <- levels(Dose)[-1]
-  FN_dose <- rep(list(data.table::data.table()),times=nlevels(Dose)-1)
-  names(FN_dose) <- levels(Dose)[-1]
-  
-  for(i in levels(Dose)[-1]){
-    summaryDT[[i]] <- data.frame(summaryDose[[i]]['datatable'])
-    fcHurdle[[i]] <- summaryDT[[i]] %>% 
-      filter(datatable.contrast == paste0("Dose",i) & datatable.component == 'H') %>% 
-      select(datatable.primerid, datatable.Pr..Chisq.)
-    fcHurdle[[i]]$FDR <- p.adjust(fcHurdle[[i]]$datatable.Pr..Chisq., 'fdr')
-  }
-  
-  mast.out <- do.call(cbind, lapply(fcHurdle, data.frame))
-  mast.final <- mast.out[,grepl('FDR', colnames(mast.out))]
-  rownames(mast.final) <- mast.out[, 1]
-  mast.final$adjusted.p <- apply(mast.final, 1, function(x) min(x))
+  timing <- system.time({
+    sce = sim
+    scaRaw <- FromMatrix(as.matrix(logcounts(sce)),
+                        data.frame(colData(sce)),
+                        data.frame(rowData(sce))
+    )
+    cdr <- colSums(assay(scaRaw) > 0)
+    colData(scaRaw)$cngeneson <- scale(cdr)
+    #filterCrit = with(colData(scaRaw), cngeneson > 1)
+    rowData(scaRaw)$symbolid <- rownames(rowData(sce))
+    Dose <- factor(colData(scaRaw)$Dose)
+    Dose <- relevel(Dose,"0")
+    colData(scaRaw)$Dose <- Dose
+    zlmDose <- zlm(~Dose + cngeneson, sca = scaRaw)
+    
+    summaryDose <- rep(list(list()), times = nlevels(Dose)-1)
+    names(summaryDose) <- levels(Dose)[-1]
+    for(i in levels(Dose)[-1])
+    {
+      summaryDose[[i]] <- summary(zlmDose, doLRT=paste0("Dose",i))
+    }
+    
+    summaryDT <- rep(list(data.table::data.table()),times=nlevels(Dose)-1)
+    names(summaryDT) <- levels(Dose)[-1]
+    fcHurdle <- rep(list(data.table::data.table()),times=nlevels(Dose)-1)
+    names(fcHurdle) <- levels(Dose)[-1]
+    fcHurdleSig <- rep(list(data.table::data.table()),times=nlevels(Dose)-1)
+    names(fcHurdleSig) <- levels(Dose)[-1]
+    fcHurdleNonSig <- rep(list(data.table::data.table()),times=nlevels(Dose)-1)
+    names(fcHurdleSig) <- levels(Dose)[-1]
+    TP_dose <- rep(list(data.table::data.table()),times=nlevels(Dose)-1)
+    names(TP_dose) <- levels(Dose)[-1]
+    FP_dose <- rep(list(data.table::data.table()),times=nlevels(Dose)-1)
+    names(FP_dose) <- levels(Dose)[-1]
+    TN_dose <- rep(list(data.table::data.table()),times=nlevels(Dose)-1)
+    names(TN_dose) <- levels(Dose)[-1]
+    FN_dose <- rep(list(data.table::data.table()),times=nlevels(Dose)-1)
+    names(FN_dose) <- levels(Dose)[-1]
+    
+    for(i in levels(Dose)[-1]){
+      summaryDT[[i]] <- data.frame(summaryDose[[i]]['datatable'])
+      fcHurdle[[i]] <- summaryDT[[i]] %>% 
+        filter(datatable.contrast == paste0("Dose",i) & datatable.component == 'H') %>% 
+        select(datatable.primerid, datatable.Pr..Chisq.)
+      fcHurdle[[i]]$FDR <- p.adjust(fcHurdle[[i]]$datatable.Pr..Chisq., 'fdr')
+    }
+    
+    mast.out <- do.call(cbind, lapply(fcHurdle, data.frame))
+    mast.final <- mast.out[,grepl('FDR', colnames(mast.out))]
+    rownames(mast.final) <- mast.out[, 1]
+    mast.final$adjusted.p <- apply(mast.final, 1, function(x) min(x))
+  })
   DGE1[[parameter.updates$TestName[n]]][['MAST']] <- mast.final
+  DGE1[[parameter.updates$TestName[n]]]$timing[['MAST']] <- timing
   ###### END MAST ####
   
   pHH0[[parameter.updates$TestName[n]]] <- DGE1[[parameter.updates$TestName[n]]]$ppH0
+  timing.list[[parameter.updates$TestName[n]]] <- DGE1[[parameter.updates$TestName[n]]]$timing
   fc.calc[[parameter.updates$TestName[n]]] <- calcFC(sim)
   pz.calc[[parameter.updates$TestName[n]]] <- calcZeroP(sim)
   saveRDS(DGE1, file = 'DGE1.062221.RData')
@@ -128,7 +145,8 @@ for (n in 1:nrow(parameter.updates)){
   saveRDS(pz.calc, file = 'pz.calc.062221.RData')
   
   benchmark.list = list()
-  for (t in names(DGE1[[parameter.updates$TestName[n]]])[-c(1)]){
+  NamesDGE <- names(DGE1[[parameter.updates$TestName[n]]])
+  for (t in NamesDGE[which(NamesDGE != 'timing' & NamesDGE != 'ppH0')]){
     for (fc in c(0, 0.40)){
       for (pct in c(0, 0.05)){
         name <- paste0(t, '_', fc, '_', pct)
@@ -212,6 +230,32 @@ ggplot(data = AUC2BRANK, aes(x = test, y = rank)) +
   theme_bw()
 ```
 
+
+```{r}
+AUC3B <- AUC3
+for (auc in names(AUC3)){
+  AUC3B[[auc]] <- data.frame(AUC3B[[auc]])
+  AUC3B[[auc]]$stat <- auc
+  AUC3B[[auc]] <- cbind(
+    AUC3B[[auc]],
+    parameter.updates[which(parameter.updates$TestName == auc), ]
+    )
+}
+AUC3B <- do.call('rbind', AUC3B)
+ggplot(data = AUC3B, aes(x = test, y = auc)) +
+  geom_violin() +
+  geom_jitter(size = 2) +
+  theme_bw()
+
+AUC3BRANK <- AUC3B %>% arrange(TestName, desc(auc)) %>% group_by(TestName) %>% mutate(rank = row_number())
+ggplot(data = AUC3BRANK, aes(x = test, y = rank)) +
+  geom_violin() +
+  geom_jitter(size = 2) +
+  labs(x = element_blank(), y = 'AUC Rank (1-7)', title = 'Percent expressed >= 5%') +
+  theme_bw()
+```
+
+
 ```{r}
 AUPR1B <- AUPR1
 for (auc in names(AUPR1)){
@@ -259,5 +303,200 @@ ggplot(data = AUC2BRANK, aes(x = test, y = rank)) +
   labs(x = element_blank(), y = 'AUC Rank (1-7)', title = 'Percent expressed >= 5%') +
   theme_bw()
 ```
+
+
+### Summarizing replicates and tests.
+```{r}
+AUC.avgs <- AUC2B %>% 
+  group_by(test, Test) %>% 
+  summarize(FacLoc = mean(FacLoc),
+            FacScale = mean(FacScale), 
+            CellN = mean(CellN),
+            deProb = mean(deProb),
+            deDown = mean(deDown),
+            mean.auc = mean(auc), 
+            mean.sd = sd(auc)) %>% 
+  arrange(Test)
+write.table(AUC.avgs, file = 'C://Users/15177/Downloads/AUC.avgs.txt', sep = '\t', quote = FALSE, row.names = FALSE)
+```
+
+
+Default Settings
+```{r}
+cairo_pdf(file = 'C://Users/15177/Downloads/Outputs062921/DefaultSettingsRep10.pdf')
+p.df <- AUC2B %>% filter(Test == 1)
+ggplot(data = p.df, aes(y = auc, x = test)) +
+  geom_boxplot() +
+  theme_bw()
+dev.off()
+```
+```{r}
+p.df <- AUC1B %>% filter(Test == 1)
+ggplot(data = p.df, aes(y = auc, x = test)) +
+  geom_boxplot() +
+  theme_bw()
+```
+
+```{r fig.width = 9}
+cairo_pdf(file = 'C://Users/15177/Downloads/Outputs062921/VaryingCellNumber.pdf')
+p.df <- AUC2B %>% filter(Test %in% c(12:17))
+ggplot(data = p.df, aes(y = auc, x = test)) +
+  facet_wrap(~CellN) +
+  geom_boxplot() +
+  theme_bw()
+dev.off()
+```
+
+```{r fig.width = 9}
+cairo_pdf(file = 'C://Users/15177/Downloads/Outputs062921/VaryingPercentDifferentiallyExpressed.pdf')
+p.df <- AUC2B %>% filter(Test %in% c(18:23))
+ggplot(data = p.df, aes(y = auc, x = test)) +
+  facet_wrap(~deProb) +
+  geom_boxplot() +
+  theme_bw()
+dev.off()
+```
+
+```{r fig.width = 9}
+cairo_pdf(file = 'C://Users/15177/Downloads/Outputs062921/VaryingPercentDownregulated.pdf')
+p.df <- AUC2B %>% filter(Test %in% c(19:33))
+ggplot(data = p.df, aes(y = auc, x = test)) +
+  facet_wrap(~deDown) +
+  geom_boxplot() +
+  theme_bw()
+dev.off()
+```
+
+```{r fig.width = 9}
+cairo_pdf(file = 'C://Users/15177/Downloads/Outputs062921/VaryingFacLoc_meanlognorm.pdf')
+p.df <- AUC2B %>% filter(Test %in% c(36:41))
+ggplot(data = p.df, aes(y = auc, x = test)) +
+  facet_wrap(~FacLoc) +
+  geom_boxplot() +
+  theme_bw()
+dev.off()
+```
+
+```{r fig.width = 9}
+cairo_pdf(file = 'C://Users/15177/Downloads/Outputs062921/VaryingFacScale_SDofmeanlognorm.pdf')
+p.df <- AUC2B %>% filter(Test %in% c(42:45))
+ggplot(data = p.df, aes(y = auc, x = test)) +
+  facet_wrap(~FacScale) +
+  geom_boxplot() +
+  theme_bw()
+dev.off()
+```
+
+```{r}
+AUCfilt.avgs <- AUC1B %>% 
+  group_by(test, Test) %>% 
+  summarize(FacLoc = mean(FacLoc),
+            FacScale = mean(FacScale), 
+            CellN = mean(CellN),
+            deProb = mean(deProb),
+            deDown = mean(deDown),
+            mean.auc = mean(auc), 
+            mean.sd = sd(auc)) %>% 
+  arrange(Test)
+write.table(AUC.avgs, file = 'C://Users/15177/Downloads/AUCfilt.avgs.txt', sep = '\t', quote = FALSE, row.names = FALSE)
+```
+
+```{r}
+cairo_pdf(file = 'C://Users/15177/Downloads/Outputs062921/ROCDEfaaultSettingsRep1.pdf')
+thresholds <- rbind(
+  B.LIST[[1]] %>% filter(fc == 0 & pct == 0 & test == 'BAYES') %>% arrange(abs(p.thresh - ppH0[[1]])) %>% filter(row_number() == 1),
+  B.LIST[[1]] %>% filter(fc == 0 & pct == 0 & test != 'BAYES') %>% group_by(test) %>% slice_min(abs(p.thresh - 0.05), n = 1)
+)
+ggplot(data = B.LIST[[1]] %>% filter(fc == 0 & pct == 0), aes(x = FPR, y = TPR, color = test)) +
+  geom_line(size = 1.2) +
+  geom_point(data = thresholds, aes(x = FPR, y = TPR, color = test), size = 4, stroke = 3, shape = 21) +
+  theme_bw()
+dev.off()
+```
+
+```{r}
+cairo_pdf(file = 'C://Users/15177/Downloads/Outputs062921/ROCDEfaaultSettingsRep2.pdf')
+thresholds <- rbind(
+  B.LIST[[2]] %>% filter(fc == 0 & pct == 0 & test == 'BAYES') %>% arrange(abs(p.thresh - ppH0[[1]])) %>% filter(row_number() == 1),
+  B.LIST[[2]] %>% filter(fc == 0 & pct == 0 & test != 'BAYES') %>% group_by(test) %>% slice_min(abs(p.thresh - 0.05), n = 1)
+)
+ggplot(data = B.LIST[[2]] %>% filter(fc == 0 & pct == 0), aes(x = FPR, y = TPR, color = test)) +
+  geom_line(size = 1.2) +
+  geom_point(data = thresholds, aes(x = FPR, y = TPR, color = test), size = 4, stroke = 3, shape = 21) +
+  theme_bw()
+dev.off()
+```
+
+
+
+
+```{r}
+cairo_pdf(file = 'C://Users/15177/Downloads/Outputs062921/ROCDEfaaultSettingsRep3.pdf')
+thresholds <- rbind(
+  B.LIST[[3]] %>% filter(fc == 0 & pct == 0 & test == 'BAYES') %>% arrange(abs(p.thresh - ppH0[[1]])) %>% filter(row_number() == 1),
+  B.LIST[[3]] %>% filter(fc == 0 & pct == 0 & test != 'BAYES') %>% group_by(test) %>% slice_min(abs(p.thresh - 0.05), n = 1)
+)
+ggplot(data = B.LIST[[3]] %>% filter(fc == 0 & pct == 0), aes(x = FPR, y = TPR, color = test)) +
+  geom_line(size = 1.2) +
+  geom_point(data = thresholds, aes(x = FPR, y = TPR, color = test), size = 4, stroke = 3, shape = 21) +
+  theme_bw()
+dev.off()
+```
+
+
+
+
+```{r}
+cairo_pdf(file = 'C://Users/15177/Downloads/Outputs062921/ROCDEfaaultSettingsRep4.pdf')
+thresholds <- rbind(
+  B.LIST[[4]] %>% filter(fc == 0 & pct == 0 & test == 'BAYES') %>% arrange(abs(p.thresh - ppH0[[1]])) %>% filter(row_number() == 1),
+  B.LIST[[4]] %>% filter(fc == 0 & pct == 0 & test != 'BAYES') %>% group_by(test) %>% slice_min(abs(p.thresh - 0.05), n = 1)
+)
+ggplot(data = B.LIST[[4]] %>% filter(fc == 0 & pct == 0), aes(x = FPR, y = TPR, color = test)) +
+  geom_line(size = 1.2) +
+  geom_point(data = thresholds, aes(x = FPR, y = TPR, color = test), size = 4, stroke = 3, shape = 21) +
+  theme_bw()
+dev.off()
+```
+
+
+```{r}
+cairo_pdf(file = 'C://Users/15177/Downloads/Outputs062921/ROCDEfaaultSettingsRep5.pdf')
+thresholds <- rbind(
+  B.LIST[[1]] %>% filter(fc == 0 & pct == 0.05 & test == 'BAYES') %>% arrange(abs(p.thresh - ppH0[[1]])) %>% filter(row_number() == 1),
+  B.LIST[[1]] %>% filter(fc == 0 & pct == 0.05 & test != 'BAYES') %>% group_by(test) %>% slice_min(abs(p.thresh - 0.05), n = 1)
+)
+ggplot(data = B.LIST[[1]] %>% filter(fc == 0 & pct == 0.05), aes(x = FPR, y = TPR, color = test)) +
+  geom_line(size = 1.2) +
+  geom_point(data = thresholds, aes(x = FPR, y = TPR, color = test), size = 4, stroke = 3, shape = 21) +
+  theme_bw()
+dev.off()
+```
+
+
+```{r}
+getAUCC <- function(DE1, DE2, K = 100){
+  common.genes <- c()
+  for (k in 1:K){
+    L1 <- rownames(DE1 %>% top_n(n = -k, wt = adjusted.p))
+    L2 <- rownames(DE2 %>% top_n(n = -k, wt = adjusted.p))
+    common.genes <- c(common.genes, length(intersect(L1, L2)))
+  }
+  AUCC <- AUC(1:K, common.genes)/((K^2)/2)
+  return(AUCC)
+}
+
+t <- names(DGE1[[33]])[-1]
+AUCC <- data.frame(matrix(ncol = length(t), nrow = length(t)))
+rownames(AUCC) <- t
+colnames(AUCC) <- t
+for (n1 in t){
+  for (n2 in t){
+    AUCC[n1, n2] <- getAUCC(DGE1[[33]][[n1]], DGE1[[33]][[n2]], K = 200)
+  }
+}
+
+```
+
 
 
