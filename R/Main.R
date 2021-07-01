@@ -29,7 +29,7 @@
 #' DEG.testing <- DETest(sim) 
 #' 
 #' @export
-DETest <- function(sce, method = "All", verbose = FALSE, fixed.priors = TRUE){
+DETest <- function(sce, method = "All", verbose = TRUE, fixed.priors = TRUE, return.time = TRUE){
   checkmate::assertClass(sce, "SingleCellExperiment")
   #Check if dose column is there
   #Check that method is valid
@@ -37,77 +37,108 @@ DETest <- function(sce, method = "All", verbose = FALSE, fixed.priors = TRUE){
   
   if ("All" %in% method){
     method = c('BAYES', 'LRT.linear', 'LRT.multiple', 'CHISQ', 'ANOVA',
-               'WRS', 'KW', 'MAST')
+               'WRS', 'KW', 'MAST', 'LIMMA-TREND', 'SEURATBIMOD')
   }
   DETest.list = list()
+  timing.summary = list()
 
-  #if (method  == "BAYES" | method == "All"){
-  if ("BAYESold" %in% method){
-    if (verbose) {message("Running Old Bayes test...")}
-    priors <- sceCalcPriors(sce, fixed.priors = fixed.priors)
-    DETest.list[["BAYESold"]] <- bayesDETest(priors, detailed = TRUE)
-    posteriorProb <- calcPosteriorProbNull(DETest.list[['BAYES']])
-    DETest.list[['BAYESold']]$adjusted.p <- posteriorProb$ppH0
-    DETest.list[['ppH0old']] <- posteriorProb$max_kappa
-  }
   if ("BAYES" %in% method){
     if (verbose) {message("Running Bayes test...")}
     Y <- DoseMatrix2List(sce)
-    optim_output_null <- optim(par = runif(6, -1.25, 1.25),   # Applying optim
-                               fn = log.lklh.marginal.null,
-                               Y = Y,
-                               control = list(maxit=1000), method="L-BFGS-B", upper=rep(5, 6),
-                               lower=rep(-5, 6))
-    optim_output_alt <- optim(par = runif(6, -1.25, 1.25),   # Applying optim
-                              fn = log.lklh.marginal.alt,
-                              Y = Y,
-                              control = list(maxit=1000), method="L-BFGS-B", upper=rep(5, 6),
-                              lower=rep(-5, 6))
-    opt_par <- function(x) {
-      opt_par<-c(x[1], exp(x[-1]))
-      return(opt_par)
-    }
     
-    par_null <- opt_par(optim_output_null$par)
-    par_alt <- opt_par(optim_output_alt$par)
-    prior.null <- 0.9
-    prior.alt <- 0.1
-    bayes.factor <- calculate_BF(Y, par_null , par_alt, prior.null, prior.alt)
-    DETest.list[["ppH0"]] <- calculate_threshold_posterior_prob_null_bayes(bayes.factor$BF,seq(0.01,1,0.01),0.05)
-    posterior_prob_null <- 1/(1+ (1/bayes.factor$BF))
-    
-    bayes.out <- data.frame(do.call('cbind', bayes.factor))
-    bayes.out$adjusted.p <- posterior_prob_null
-    DETest.list[["BAYES"]] <- bayes.out
+    timing <- system.time({
+      optim_output_null <- optim(par = runif(6, -1.25, 1.25),   # Applying optim
+                                 fn = log.lklh.marginal.null,
+                                 Y = Y,
+                                 control = list(maxit=1000), method="L-BFGS-B", upper=rep(5, 6),
+                                 lower=rep(-5, 6))
+      optim_output_alt <- optim(par = runif(6, -1.25, 1.25),   # Applying optim
+                                fn = log.lklh.marginal.alt,
+                                Y = Y,
+                                control = list(maxit=1000), method="L-BFGS-B", upper=rep(5, 6),
+                                lower=rep(-5, 6))
+      opt_par <- function(x) {
+        opt_par<-c(x[1], exp(x[-1]))
+        return(opt_par)
+      }
+      
+      par_null <- opt_par(optim_output_null$par)
+      par_alt <- opt_par(optim_output_alt$par)
+      prior.null <- 0.9
+      prior.alt <- 0.1
+      bayes.factor <- calculate_BF(Y, par_null , par_alt, prior.null, prior.alt)
+      DETest.list[["ppH0"]] <- calculate_threshold_posterior_prob_null_bayes(bayes.factor$BF,seq(0.01,1,0.01),0.05)
+      posterior_prob_null <- 1/(1+ (1/bayes.factor$BF))
+      
+      bayes.out <- data.frame(do.call('cbind', bayes.factor))
+      bayes.out$adjusted.p <- posterior_prob_null
+      DETest.list[["BAYES"]] <- bayes.out
+    })
+    timing.summary[["BAYES"]] <- timing
   }
   if ("LRT.linear" %in% method){
     if (verbose) {message("Running LRT linear test...")}
-    DETest.list[["LRTLin"]] <- LRT_linearModel(sce)
+    timing <- system.time({
+      DETest.list[["LRTLin"]] <- LRT_linearModel(sce)
+    })
+    timing.summary[["LRTLin"]] <- timing
   }
   if ("LRT.multiple" %in% method){  
     if (verbose) {message("Running LRT multiple test...")}
-    priors <- sceCalcPriors(sce)
-    DETest.list[["LRTMult"]] <- LRT_multipleModel(priors[[1]])
+    timing <- system.time({
+      priors <- sceCalcPriors(sce)
+      DETest.list[["LRTMult"]] <- LRT_multipleModel(priors[[1]])
+    })
+    timing.summary[['LRTMult']] <- timing
   }
   if ("CHISQ" %in% method){
     if (verbose) {message("Running Chi Squared test...")}
-    DETest.list[["CHISQ"]] <- runChi(sce)
+    timing <- system.time({
+      DETest.list[["CHISQ"]] <- batchChi(sce)
+    })
+    timing.summary[["CHISQ"]] <- timing
   }
   if ("ANOVA" %in% method){
     if (verbose) {message("Running ANOVA test...")}
-    DETest.list[['ANOVA']] <- batchANOVA(sce)
+    timing <- system.time({
+      DETest.list[['ANOVA']] <- batchANOVA(sce)
+    })
+    timing.summary[['ANOVA']] <- timing
   }
   if ("WRS" %in% method){
     if (verbose) {message("Running Wilcoxon rank sum test...")}
-    DETest.list[["WRS"]] <- batchWRS(sce)
+    timing <- system.time({
+      DETest.list[["WRS"]] <- batchWRS(sce)
+    })
+    timing.summary[["WRS"]] <- timing
   }
   if ("KW" %in% method){
     if (verbose) {message("Running Kruskal Wallis test...")}
-    DETest.list[['KW']] <- batchKW(sce)
+    timing <- system.time({
+      DETest.list[['KW']] <- batchKW(sce)
+    })
+    timing.summary[["KW"]] <- timing
   }
   if ("MAST" %in% method){
     if (verbose) {message("Running MAST test...")}
     #DETest.list[["MAST"]] <- runMASTDR(sce)
+  }
+  if ("LIMMA-TREND" %in% method){
+    if (verbose) {message("Running limma-trend test...")}
+    timing <- system.time({
+      DETest.list[['LIMMA-TREND']] <- runLimmaTrend(sce)
+    })
+    timing.summary[['LIMMA-TREND']] <- timing
+  }
+  if ("SEURATBIMOD" %in% method){
+    if (verbose) {message("Running Seurat Bimod test...")}
+    timing <- system.time({
+      DETest.list[['SEURATBIMOD']] <- runSeuratBimod(sce)
+    })
+    timing.summary[['SEURATBIMOD']] <- timing
+  }
+  if (return.time == TRUE){
+    DETest.list[["timing"]] <- timing.summary
   }
   return(DETest.list)
 }

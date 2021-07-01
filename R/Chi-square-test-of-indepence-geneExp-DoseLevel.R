@@ -4,13 +4,64 @@
 #' @return FDR adjusted p-values
 #
 #' @export
-runChi <- function(sce){
+batchChi <- function(sce){
+  data <- as.matrix(logcounts(sce))
+  dose <- colData(sce)$Dose
+  chisq.pvalues <- data.frame(apply(data, 1, function(x) runChi(x, dose)))
+  chisq.adj <- data.frame(apply(chisq.pvalues, 2, function(x) p.adjust(x, 'fdr')))
+  chisq.out <- data.frame(cbind(chisq.pvalues, chisq.adj))
+  colnames(chisq.out) <- c('p.value', 'adjusted.p')
+  return(chisq.out)
+}
+
+#' Chi-square test of independence for binned gene expression data
+#' @author Satabdi Saha
+#' @param sce A Single Cell Object
+#' @return FDR adjusted p-values
+#' 
+#' @import dplyr
+#' @export
+runChi <- function(data, dose_vec, binSize = 10){
+  if (max(data) == 0 | sum(data > 0) == 1){
+    chisq = 1
+  } else {
+    in.df <- data.frame(
+      dose = dose_vec,
+      data = data
+    )
+    #new_breaks <- seq(min(data), max(data), length.out = binSize)
+    new_breaks <- c(0, quantile(data[which(data != 0)], 
+                                probs = seq(0,1, length.out = binSize-1)))
+    #Alternative..
+    db <- suppressWarnings(
+      in.df %>% 
+        group_by(dose) %>% 
+        summarize(binned = table(cut(data, breaks = new_breaks)), .groups = 'drop') %>%
+        group_split(dose)
+    )
+    data.binned <- t(sapply(db, function(x){
+      (x$binned)
+    }))
+    rownames(data.binned) <- levels(dose_vec)
+    chisq <- chisq.test(data.binned[,which(colSums(data.binned) > 0)],
+                        simulate.p.value = TRUE)$p.value
+  }
+  return(chisq)
+}
+
+#' Chi-square test of independence for binned gene expression data
+#' @author Satabdi Saha
+#' @param sce A Single Cell Object
+#' @return FDR adjusted p-values
+#' 
+#' @export
+old_runChi <- function(sce){
   # TODO: replace hardcoded values.
   data_logcounts <- as.matrix(logcounts(sce))
   dose <- colData(sce)$Dose
   data_dose <- data.frame(t(data_logcounts),dose)
   colnames(data_dose) <- c(rownames(data_logcounts),"Dose")
-  #Break the dataframe to data lists for seperate dose groups
+  #Break the dataframe to data lists for separate dose groups
   data <- split_tibble(data_dose,"Dose")
   data <- lapply(data, function(x) t(x))
   max_value_data <- max(sapply(data, function(x) apply(x,1,max)))
@@ -56,3 +107,4 @@ split_tibble <- function(tibble, column = 'col') {
   library(dplyr)
   tibble %>% split(., .[,column]) %>% lapply(., function(x) x[,setdiff(names(x),column)])
 }
+
