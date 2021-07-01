@@ -1,4 +1,3 @@
-#Y<-readRDS("data_sim.rds")
 #' Title Compute the marginal log-likehihood of the p-genes under the null hypotheesis
 #'
 #' @param par Parameters of the function
