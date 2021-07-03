@@ -11,6 +11,7 @@ batchChi <- function(sce){
   chisq.adj <- data.frame(apply(chisq.pvalues, 2, function(x) p.adjust(x, 'fdr')))
   chisq.out <- data.frame(cbind(chisq.pvalues, chisq.adj))
   colnames(chisq.out) <- c('p.value', 'adjusted.p')
+  chisq.out[which(is.nan(chisq.out$adjusted.p)), 'adjusted.p'] <- 1
   return(chisq.out)
 }
 
