@@ -12,6 +12,7 @@ batchKW <- function(sce){
   kw.pvalues <- apply(data, 1, function(x) runKW(x, dose))
   kw.out <- data.frame(kw.pvalues)
   kw.out$adjusted.p <- p.adjust(kw.out$kw.pvalues)
+  kw.out[which(is.nan(kw.out$adjusted.p)), 'adjusted.p'] <- 1
   return(kw.out)
 }
 
