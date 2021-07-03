@@ -33,7 +33,7 @@ data(params)
 sim.dose = c(0, 0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30)
 dose.prob = rep(1/9, 9)
 
-params@nGenes = 2000
+params@nGenes = 900
 ```
 
 ```{r}
@@ -54,16 +54,16 @@ pHH0 = list()
 timing.list = list()
 fc.calc = list()
 pz.calc = list()
+de_idx = list()
 
-#for (n in 1:nrow(parameter.updates)){
-for (n in 280:282){
+for (n in 1:nrow(parameter.updates)){
   print(n)
   params@nBatches = length(sim.dose)*3
   params@batch.facLoc = rep(0.1, params@nBatches)
   params@batch.facScale = rep(0.1, params@nBatches)
   params@de.facLoc = as.numeric(parameter.updates$FacLoc[n])
   params@de.facScale = as.numeric(parameter.updates$FacScale[n])
-  cellNums = as.numeric(unlist(strsplit(parameter.updates$CellN[n], split = ',')))
+  cellNums = as.numeric(unlist(strsplit(as.character(parameter.updates$CellN[n]), split = ',')))
   if (length(cellNums) == 1){
     params@nCells = cellNums*9
     dose.prob = rep(1/9, 9)
@@ -87,7 +87,6 @@ for (n in 280:282){
     )
     cdr <- colSums(assay(scaRaw) > 0)
     colData(scaRaw)$cngeneson <- scale(cdr)
-    #filterCrit = with(colData(scaRaw), cngeneson > 1)
     rowData(scaRaw)$symbolid <- rownames(rowData(sce))
     Dose <- factor(colData(scaRaw)$Dose)
     Dose <- relevel(Dose,"0")
@@ -137,6 +136,7 @@ for (n in 280:282){
   
   pHH0[[parameter.updates$TestName[n]]] <- DGE1[[parameter.updates$TestName[n]]]$ppH0
   timing.list[[parameter.updates$TestName[n]]] <- DGE1[[parameter.updates$TestName[n]]]$timing
+  de_idx[[parameter.updates$TestName[n]]] <- rowData(sim)$DE_idx
   fc.calc[[parameter.updates$TestName[n]]] <- calcFC(sim)
   pz.calc[[parameter.updates$TestName[n]]] <- calcZeroP(sim)
   saveRDS(DGE1, file = 'DGE1.062221.RData')
@@ -156,7 +156,7 @@ for (n in 280:282){
         summary$fc = fc
         summary$pct = pct
         benchmark.list[[name]] = summary
-        saveRDS(benchmark.list, file = 'benchmark.list.061521.RData')
+        saveRDS(benchmark.list, file = 'benchmark.list.070221.RData')
       }
     }
   }
@@ -463,8 +463,8 @@ dev.off()
 ```{r}
 cairo_pdf(file = 'C://Users/15177/Downloads/Outputs062921/ROCDEfaaultSettingsRep5.pdf')
 thresholds <- rbind(
-  B.LIST[[1]] %>% filter(fc == 0 & pct == 0.05 & test == 'BAYES') %>% arrange(abs(p.thresh - ppH0[[1]])) %>% filter(row_number() == 1),
-  B.LIST[[1]] %>% filter(fc == 0 & pct == 0.05 & test != 'BAYES') %>% group_by(test) %>% slice_min(abs(p.thresh - 0.05), n = 1)
+  B.LIST[[1]] %>% filter(fc == 0 & pct == 0.0 & test == 'BAYES') %>% arrange(abs(p.thresh - ppH0[[1]])) %>% filter(row_number() == 1),
+  B.LIST[[1]] %>% filter(fc == 0 & pct == 0.0 & test != 'BAYES') %>% group_by(test) %>% slice_min(abs(p.thresh - 0.05), n = 1)
 )
 ggplot(data = B.LIST[[1]] %>% filter(fc == 0 & pct == 0.05), aes(x = FPR, y = TPR, color = test)) +
   geom_line(size = 1.2) +

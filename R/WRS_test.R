@@ -15,6 +15,7 @@ batchWRS <- function(sce){
   colnames(wrs.adj) <- paste0('adjusted.p.', colnames(wrs.adj))
   wrs.adj$adjusted.p <- apply(wrs.adj, 1, function(x) min(x))
   wrs = cbind(wrs.pvalues, wrs.adj)
+  wrs[which(is.nan(wrs$adjusted.p)), 'adjusted.p'] <- 1
   
   return(wrs)
 }

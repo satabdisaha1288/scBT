@@ -390,7 +390,7 @@ benchmarkSim_batch <- function(sim, test, fc.threshold = 0, pct.expressed = 0){
   pz <- calcZeroP(sim)
   
   test <- test[rownames(rowData(sim)), , drop = FALSE]
-  pval.list <- sort(unique(test$adjusted.p))
+  pval.list <- sort(c(unique(test$adjusted.p), 0.05))
   
   indexed.df <- data.frame(
     adjusted.p = test$adjusted.p,
@@ -399,6 +399,9 @@ benchmarkSim_batch <- function(sim, test, fc.threshold = 0, pct.expressed = 0){
     pz.min = data.frame(pz.min = apply(pz, 1, function(x) min(x))) 
   )  
 
+  indexed.df <- indexed.df %>%
+    filter(fc.max >= fc.threshold & pz.min <= (1-pct.expressed))
+  
   classification.batch <- sapply(pval.list, 
                                  function(x) benchmark(indexed.df, 
                                                        test, x,
