@@ -12,6 +12,7 @@ batchANOVA <- function(sce){
   aov.pvalues <- apply(data, 1, function(x) runAnova(x, dose))
   aov.out <- data.frame(aov.pvalues)
   aov.out$adjusted.p <- p.adjust(aov.out$aov.pvalues, 'fdr')
+  aov.out[which(is.nan(aov.out$adjusted.p)),'adjusted.p'] <- 1
   return(aov.out)
 }
 
