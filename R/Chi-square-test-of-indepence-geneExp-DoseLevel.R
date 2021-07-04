@@ -33,19 +33,24 @@ runChi <- function(data, dose_vec, binSize = 10){
     #new_breaks <- seq(min(data), max(data), length.out = binSize)
     new_breaks <- c(0, quantile(data[which(data != 0)], 
                                 probs = seq(0,1, length.out = binSize-1)))
+    
+    if (length(unique(new_breaks)) != 10){
+      chisq = 1
+    } else {
     #Alternative..
-    db <- suppressWarnings(
-      in.df %>% 
-        group_by(dose) %>% 
-        summarize(binned = table(cut(data, breaks = new_breaks)), .groups = 'drop') %>%
-        group_split(dose)
-    )
-    data.binned <- t(sapply(db, function(x){
-      (x$binned)
-    }))
-    rownames(data.binned) <- levels(dose_vec)
-    chisq <- chisq.test(data.binned[,which(colSums(data.binned) > 0)],
-                        simulate.p.value = TRUE)$p.value
+      db <- suppressWarnings(
+        in.df %>% 
+          group_by(dose) %>% 
+          summarize(binned = table(cut(data, breaks = new_breaks)), .groups = 'drop') %>%
+          group_split(dose)
+      )
+      data.binned <- t(sapply(db, function(x){
+        (x$binned)
+      }))
+      rownames(data.binned) <- levels(dose_vec)
+      chisq <- chisq.test(data.binned[,which(colSums(data.binned) > 0)],
+                          simulate.p.value = TRUE)$p.value
+    }
   }
   return(chisq)
 }
