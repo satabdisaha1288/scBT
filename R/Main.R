@@ -36,8 +36,8 @@ DETest <- function(sce, method = "All", verbose = TRUE, fixed.priors = TRUE, ret
   stopifnot(validateDRsce(sce))
   
   if ("All" %in% method){
-    method = c('BAYES', 'LRT.linear', 'LRT.multiple', 'CHISQ', 'ANOVA',
-               'WRS', 'KW', 'MAST', 'LIMMA-TREND', 'SEURATBIMOD')
+    method = c('BAYES', 'LRT.linear', 'LRT.multiple', 'ANOVA',
+               'WRS', 'KW', 'LIMMA-TREND', 'SEURATBIMOD')
   }
   DETest.list = list()
   timing.summary = list()
