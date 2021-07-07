@@ -43,12 +43,6 @@ parameter.updates <- read.table('ParTestsCombos.txt', header = TRUE, sep = '\t')
 ```{r}
 # Create empty lists to append and save outputs
 DGE1 = list()
-AUC1 = list()
-AUC2 = list()
-AUC3 = list()
-AUPR1 = list()
-AUPR2 = list()
-AUPR3 = list()
 B.LIST = list()
 pHH0 = list()
 timing.list = list()
@@ -56,7 +50,7 @@ fc.calc = list()
 pz.calc = list()
 de_idx = list()
 
-for (n in 1:nrow(parameter.updates)){
+for (n in 1:nrow(parameter.updates))
   print(n)
   params@nBatches = length(sim.dose)*3
   params@batch.facLoc = rep(0.1, params@nBatches)
@@ -74,8 +68,12 @@ for (n in 1:nrow(parameter.updates)){
   params@de.prob = as.numeric(parameter.updates$deProb[n])
   params@de.downProb = as.numeric(parameter.updates$deDown[n])
   params@seed = as.numeric(parameter.updates$seed[n])
+  libscale = as.numeric(parameter.updates$libScale[n])
   
-  sim = splatSimulateDR(params, dose.names = sim.dose, dose.prob = dose.prob, lib.scale = 1.3, verbose = FALSE)
+  sim = splatSimulateDR(params, dose.names = sim.dose, dose.prob = dose.prob, lib.scale = libscale, verbose = FALSE)
+  print(sim)
+  sim <- sim[rowSums(logcounts(sim))>0,]
+  print(sim)
   DGE1[[parameter.updates$TestName[n]]] = DETest(sim, method = c("All"), fixed.priors = FALSE, verbose = TRUE)
   
   ######## MAST #####
@@ -143,11 +141,12 @@ for (n in 1:nrow(parameter.updates)){
   saveRDS(pHH0, file = 'ppH0.062221.RData')
   saveRDS(fc.calc, file = 'fc.calc.062221.RData')
   saveRDS(pz.calc, file = 'pz.calc.062221.RData')
+  saveRDS(de_idx, file = 'de_idx.062221.RData')
   
   benchmark.list = list()
   NamesDGE <- names(DGE1[[parameter.updates$TestName[n]]])
   for (t in NamesDGE[which(NamesDGE != 'timing' & NamesDGE != 'ppH0')]){
-    for (fc in c(0, 0.40)){
+    for (fc in c(0)){
       for (pct in c(0, 0.05)){
         name <- paste0(t, '_', fc, '_', pct)
         benchmark <- benchmarkSim_batch(sim, DGE1[[parameter.updates$TestName[n]]][[t]], fc.threshold = fc, pct.expressed = pct)
@@ -163,340 +162,9 @@ for (n in 1:nrow(parameter.updates)){
 
   B.LIST[[parameter.updates$TestName[n]]] = do.call('rbind', benchmark.list)
   saveRDS(B.LIST, file = 'B.LIST.062221.RData')
-
-  AUC1[[parameter.updates$TestName[n]]] = B.LIST[[parameter.updates$TestName[n]]] %>% filter(fc == 0 & pct == 0.05) %>% group_by(test) %>% summarise(auc = AUC(FPR, TPR))
-  saveRDS(AUC1, file = 'AUC1.062221.RData')
-  AUPR1[[parameter.updates$TestName[n]]] = B.LIST[[parameter.updates$TestName[n]]] %>% filter(fc == 0 & pct == 0.05) %>% group_by(test) %>% summarise(auc = AUC(precision, recall))
-  saveRDS(AUPR1, file = 'AUPR1.062221.RData')
-  
-  AUC2[[parameter.updates$TestName[n]]] = B.LIST[[parameter.updates$TestName[n]]] %>% filter(fc == 0 & pct == 0) %>% group_by(test) %>% summarise(auc = AUC(FPR, TPR))
-  saveRDS(AUC2, file = 'AUC2.062221.RData')
-  AUPR2[[parameter.updates$TestName[n]]] = B.LIST[[parameter.updates$TestName[n]]] %>% filter(fc == 0 & pct == 0) %>% group_by(test) %>% summarise(auc = AUC(precision, recall))
-  saveRDS(AUPR2, file = 'AUPR2.062221.RData')
-  
-  AUC3[[parameter.updates$TestName[n]]] = B.LIST[[parameter.updates$TestName[n]]] %>% filter(fc == 0.4 & pct == 0) %>% group_by(test) %>% summarise(auc = AUC(FPR, TPR))
-  saveRDS(AUC3, file = 'AUC3.062221.RData')
-  AUPR3[[parameter.updates$TestName[n]]] = B.LIST[[parameter.updates$TestName[n]]] %>% filter(fc == 0.4 & pct == 0) %>% group_by(test) %>% summarise(auc = AUC(precision, recall))
-  saveRDS(AUPR3, file = 'AUPR3.062221.RData')
 }
 ```
 
-
-```{r}
-AUC1B <- AUC1
-for (auc in names(AUC1)){
-  AUC1B[[auc]] <- data.frame(AUC1B[[auc]])
-  AUC1B[[auc]]$stat <- auc
-  AUC1B[[auc]] <- cbind(
-    AUC1B[[auc]],
-    parameter.updates[which(parameter.updates$TestName == auc), ]
-    )
-}
-AUC1B <- do.call('rbind', AUC1B)
-ggplot(data = AUC1B, aes(x = test, y = auc)) +
-  geom_violin() +
-  geom_jitter(size = 2, aes(color = factor(FacLoc))) +
-  theme_bw()
-
-AUC1BRANK <- AUC1B %>% arrange(TestName, desc(auc)) %>% group_by(TestName) %>% mutate(rank = row_number())
-ggplot(data = AUC1BRANK, aes(x = test, y = rank)) +
-  geom_violin() +
-  geom_jitter(size = 2) +
-  labs(x = element_blank(), y = 'AUC Rank (1-7)', title = 'All Genes') +
-  theme_bw()
-```
-
-```{r}
-AUC2B <- AUC2
-for (auc in names(AUC2)){
-  AUC2B[[auc]] <- data.frame(AUC2B[[auc]])
-  AUC2B[[auc]]$stat <- auc
-  AUC2B[[auc]] <- cbind(
-    AUC2B[[auc]],
-    parameter.updates[which(parameter.updates$TestName == auc), ]
-    )
-}
-AUC2B <- do.call('rbind', AUC2B)
-ggplot(data = AUC2B, aes(x = test, y = auc)) +
-  geom_violin() +
-  geom_jitter(size = 2) +
-  theme_bw()
-
-AUC2BRANK <- AUC2B %>% arrange(TestName, desc(auc)) %>% group_by(TestName) %>% mutate(rank = row_number())
-ggplot(data = AUC2BRANK, aes(x = test, y = rank)) +
-  geom_violin() +
-  geom_jitter(size = 2) +
-  labs(x = element_blank(), y = 'AUC Rank (1-7)', title = 'Percent expressed >= 5%') +
-  theme_bw()
-```
-
-
-```{r}
-AUC3B <- AUC3
-for (auc in names(AUC3)){
-  AUC3B[[auc]] <- data.frame(AUC3B[[auc]])
-  AUC3B[[auc]]$stat <- auc
-  AUC3B[[auc]] <- cbind(
-    AUC3B[[auc]],
-    parameter.updates[which(parameter.updates$TestName == auc), ]
-    )
-}
-AUC3B <- do.call('rbind', AUC3B)
-ggplot(data = AUC3B, aes(x = test, y = auc)) +
-  geom_violin() +
-  geom_jitter(size = 2) +
-  theme_bw()
-
-AUC3BRANK <- AUC3B %>% arrange(TestName, desc(auc)) %>% group_by(TestName) %>% mutate(rank = row_number())
-ggplot(data = AUC3BRANK, aes(x = test, y = rank)) +
-  geom_violin() +
-  geom_jitter(size = 2) +
-  labs(x = element_blank(), y = 'AUC Rank (1-7)', title = 'Percent expressed >= 5%') +
-  theme_bw()
-```
-
-
-```{r}
-AUPR1B <- AUPR1
-for (auc in names(AUPR1)){
-  AUPR1B[[auc]] <- data.frame(AUPR1B[[auc]])
-  AUPR1B[[auc]]$stat <- auc
-  AUPR1B[[auc]] <- cbind(
-    AUPR1B[[auc]],
-    parameter.updates[which(parameter.updates$TestName == auc), ]
-    )
-}
-AUPR1B <- do.call('rbind', AUPR1B)
-ggplot(data = AUPR1B, aes(x = test, y = auc)) +
-  geom_violin() +
-  geom_jitter(size = 2, aes(color = factor(FacLoc))) +
-  theme_bw()
-
-AUPR1BRANK <- AUPR1B %>% arrange(TestName, desc(auc)) %>% group_by(TestName) %>% mutate(rank = row_number())
-ggplot(data = AUC2BRANK, aes(x = test, y = rank)) +
-  geom_violin() +
-  geom_jitter(size = 2) +
-  labs(x = element_blank(), y = 'AUC Rank (1-7)', title = 'Percent expressed >= 5%') +
-  theme_bw()
-```
-
-```{r}
-AUPR2B <- AUPR2
-for (auc in names(AUPR2)){
-  AUPR2B[[auc]] <- data.frame(AUPR2B[[auc]])
-  AUPR2B[[auc]]$stat <- auc
-  AUPR2B[[auc]] <- cbind(
-    AUPR2B[[auc]],
-    parameter.updates[which(parameter.updates$TestName == auc), ]
-    )
-}
-AUPR2B <- do.call('rbind', AUPR2B)
-ggplot(data = AUPR2B, aes(x = test, y = auc)) +
-  geom_violin() +
-  geom_jitter(size = 2) +
-  theme_bw()
-
-AUPR2BRANK <- AUPR2B %>% arrange(TestName, desc(auc)) %>% group_by(TestName) %>% mutate(rank = row_number())
-ggplot(data = AUC2BRANK, aes(x = test, y = rank)) +
-  geom_violin() +
-  geom_jitter(size = 2) +
-  labs(x = element_blank(), y = 'AUC Rank (1-7)', title = 'Percent expressed >= 5%') +
-  theme_bw()
-```
-
-
-### Summarizing replicates and tests.
-```{r}
-AUC.avgs <- AUC2B %>% 
-  group_by(test, Test) %>% 
-  summarize(FacLoc = mean(FacLoc),
-            FacScale = mean(FacScale), 
-            CellN = mean(CellN),
-            deProb = mean(deProb),
-            deDown = mean(deDown),
-            mean.auc = mean(auc), 
-            mean.sd = sd(auc)) %>% 
-  arrange(Test)
-write.table(AUC.avgs, file = 'C://Users/15177/Downloads/AUC.avgs.txt', sep = '\t', quote = FALSE, row.names = FALSE)
-```
-
-
-Default Settings
-```{r}
-cairo_pdf(file = 'C://Users/15177/Downloads/Outputs062921/DefaultSettingsRep10.pdf')
-p.df <- AUC2B %>% filter(Test == 1)
-ggplot(data = p.df, aes(y = auc, x = test)) +
-  geom_boxplot() +
-  theme_bw()
-dev.off()
-```
-```{r}
-p.df <- AUC1B %>% filter(Test == 1)
-ggplot(data = p.df, aes(y = auc, x = test)) +
-  geom_boxplot() +
-  theme_bw()
-```
-
-```{r fig.width = 9}
-cairo_pdf(file = 'C://Users/15177/Downloads/Outputs062921/VaryingCellNumber.pdf')
-p.df <- AUC2B %>% filter(Test %in% c(12:17))
-ggplot(data = p.df, aes(y = auc, x = test)) +
-  facet_wrap(~CellN) +
-  geom_boxplot() +
-  theme_bw()
-dev.off()
-```
-
-```{r fig.width = 9}
-cairo_pdf(file = 'C://Users/15177/Downloads/Outputs062921/VaryingPercentDifferentiallyExpressed.pdf')
-p.df <- AUC2B %>% filter(Test %in% c(18:23))
-ggplot(data = p.df, aes(y = auc, x = test)) +
-  facet_wrap(~deProb) +
-  geom_boxplot() +
-  theme_bw()
-dev.off()
-```
-
-```{r fig.width = 9}
-cairo_pdf(file = 'C://Users/15177/Downloads/Outputs062921/VaryingPercentDownregulated.pdf')
-p.df <- AUC2B %>% filter(Test %in% c(19:33))
-ggplot(data = p.df, aes(y = auc, x = test)) +
-  facet_wrap(~deDown) +
-  geom_boxplot() +
-  theme_bw()
-dev.off()
-```
-
-```{r fig.width = 9}
-cairo_pdf(file = 'C://Users/15177/Downloads/Outputs062921/VaryingFacLoc_meanlognorm.pdf')
-p.df <- AUC2B %>% filter(Test %in% c(36:41))
-ggplot(data = p.df, aes(y = auc, x = test)) +
-  facet_wrap(~FacLoc) +
-  geom_boxplot() +
-  theme_bw()
-dev.off()
-```
-
-```{r fig.width = 9}
-cairo_pdf(file = 'C://Users/15177/Downloads/Outputs062921/VaryingFacScale_SDofmeanlognorm.pdf')
-p.df <- AUC2B %>% filter(Test %in% c(42:45))
-ggplot(data = p.df, aes(y = auc, x = test)) +
-  facet_wrap(~FacScale) +
-  geom_boxplot() +
-  theme_bw()
-dev.off()
-```
-
-```{r}
-AUCfilt.avgs <- AUC1B %>% 
-  group_by(test, Test) %>% 
-  summarize(FacLoc = mean(FacLoc),
-            FacScale = mean(FacScale), 
-            CellN = mean(CellN),
-            deProb = mean(deProb),
-            deDown = mean(deDown),
-            mean.auc = mean(auc), 
-            mean.sd = sd(auc)) %>% 
-  arrange(Test)
-write.table(AUC.avgs, file = 'C://Users/15177/Downloads/AUCfilt.avgs.txt', sep = '\t', quote = FALSE, row.names = FALSE)
-```
-
-```{r}
-cairo_pdf(file = 'C://Users/15177/Downloads/Outputs062921/ROCDEfaaultSettingsRep1.pdf')
-thresholds <- rbind(
-  B.LIST[[1]] %>% filter(fc == 0 & pct == 0 & test == 'BAYES') %>% arrange(abs(p.thresh - ppH0[[1]])) %>% filter(row_number() == 1),
-  B.LIST[[1]] %>% filter(fc == 0 & pct == 0 & test != 'BAYES') %>% group_by(test) %>% slice_min(abs(p.thresh - 0.05), n = 1)
-)
-ggplot(data = B.LIST[[1]] %>% filter(fc == 0 & pct == 0), aes(x = FPR, y = TPR, color = test)) +
-  geom_line(size = 1.2) +
-  geom_point(data = thresholds, aes(x = FPR, y = TPR, color = test), size = 4, stroke = 3, shape = 21) +
-  theme_bw()
-dev.off()
-```
-
-```{r}
-cairo_pdf(file = 'C://Users/15177/Downloads/Outputs062921/ROCDEfaaultSettingsRep2.pdf')
-thresholds <- rbind(
-  B.LIST[[2]] %>% filter(fc == 0 & pct == 0 & test == 'BAYES') %>% arrange(abs(p.thresh - ppH0[[1]])) %>% filter(row_number() == 1),
-  B.LIST[[2]] %>% filter(fc == 0 & pct == 0 & test != 'BAYES') %>% group_by(test) %>% slice_min(abs(p.thresh - 0.05), n = 1)
-)
-ggplot(data = B.LIST[[2]] %>% filter(fc == 0 & pct == 0), aes(x = FPR, y = TPR, color = test)) +
-  geom_line(size = 1.2) +
-  geom_point(data = thresholds, aes(x = FPR, y = TPR, color = test), size = 4, stroke = 3, shape = 21) +
-  theme_bw()
-dev.off()
-```
-
-
-
-
-```{r}
-cairo_pdf(file = 'C://Users/15177/Downloads/Outputs062921/ROCDEfaaultSettingsRep3.pdf')
-thresholds <- rbind(
-  B.LIST[[3]] %>% filter(fc == 0 & pct == 0 & test == 'BAYES') %>% arrange(abs(p.thresh - ppH0[[1]])) %>% filter(row_number() == 1),
-  B.LIST[[3]] %>% filter(fc == 0 & pct == 0 & test != 'BAYES') %>% group_by(test) %>% slice_min(abs(p.thresh - 0.05), n = 1)
-)
-ggplot(data = B.LIST[[3]] %>% filter(fc == 0 & pct == 0), aes(x = FPR, y = TPR, color = test)) +
-  geom_line(size = 1.2) +
-  geom_point(data = thresholds, aes(x = FPR, y = TPR, color = test), size = 4, stroke = 3, shape = 21) +
-  theme_bw()
-dev.off()
-```
-
-
-
-
-```{r}
-cairo_pdf(file = 'C://Users/15177/Downloads/Outputs062921/ROCDEfaaultSettingsRep4.pdf')
-thresholds <- rbind(
-  B.LIST[[4]] %>% filter(fc == 0 & pct == 0 & test == 'BAYES') %>% arrange(abs(p.thresh - ppH0[[1]])) %>% filter(row_number() == 1),
-  B.LIST[[4]] %>% filter(fc == 0 & pct == 0 & test != 'BAYES') %>% group_by(test) %>% slice_min(abs(p.thresh - 0.05), n = 1)
-)
-ggplot(data = B.LIST[[4]] %>% filter(fc == 0 & pct == 0), aes(x = FPR, y = TPR, color = test)) +
-  geom_line(size = 1.2) +
-  geom_point(data = thresholds, aes(x = FPR, y = TPR, color = test), size = 4, stroke = 3, shape = 21) +
-  theme_bw()
-dev.off()
-```
-
-
-```{r}
-cairo_pdf(file = 'C://Users/15177/Downloads/Outputs062921/ROCDEfaaultSettingsRep5.pdf')
-thresholds <- rbind(
-  B.LIST[[1]] %>% filter(fc == 0 & pct == 0.0 & test == 'BAYES') %>% arrange(abs(p.thresh - ppH0[[1]])) %>% filter(row_number() == 1),
-  B.LIST[[1]] %>% filter(fc == 0 & pct == 0.0 & test != 'BAYES') %>% group_by(test) %>% slice_min(abs(p.thresh - 0.05), n = 1)
-)
-ggplot(data = B.LIST[[1]] %>% filter(fc == 0 & pct == 0.05), aes(x = FPR, y = TPR, color = test)) +
-  geom_line(size = 1.2) +
-  geom_point(data = thresholds, aes(x = FPR, y = TPR, color = test), size = 4, stroke = 3, shape = 21) +
-  theme_bw()
-dev.off()
-```
-
-
-```{r}
-getAUCC <- function(DE1, DE2, K = 100){
-  common.genes <- c()
-  for (k in 1:K){
-    L1 <- rownames(DE1 %>% top_n(n = -k, wt = adjusted.p))
-    L2 <- rownames(DE2 %>% top_n(n = -k, wt = adjusted.p))
-    common.genes <- c(common.genes, length(intersect(L1, L2)))
-  }
-  AUCC <- AUC(1:K, common.genes)/((K^2)/2)
-  return(AUCC)
-}
-
-t <- names(DGE1[[33]])[-1]
-AUCC <- data.frame(matrix(ncol = length(t), nrow = length(t)))
-rownames(AUCC) <- t
-colnames(AUCC) <- t
-for (n1 in t){
-  for (n2 in t){
-    AUCC[n1, n2] <- getAUCC(DGE1[[33]][[n1]], DGE1[[33]][[n2]], K = 200)
-  }
-}
-
-```
 
 
 
