@@ -11,7 +11,11 @@ runLimmaTrend <- function(sce){
   data <- as.matrix(logcounts(sce))
   dose <- colData(sce)$Dose
   zeroSums <- which(rowSums(data) == 0)
-  expr <- data[-zeroSums,]
+  if (length(zeroSums) != 0){
+    expr <- data[-zeroSums,]
+  } else {
+    expr <- data
+  }
   
   design <- model.matrix(~dose)
   fit <- limma::lmFit(expr, design = design)
@@ -19,12 +23,18 @@ runLimmaTrend <- function(sce){
   tt <- limma::topTable(fit, n = Inf, adjust.method = 'BH')
   
   missing <- data.frame(matrix(ncol = ncol(tt), nrow = length(zeroSums)))
-  colnames(missing) <- colnames(tt)
-  rownames(missing) <- names(zeroSums)
-  missing$adj.P.Val <- 1
-  limma.out <- rbind(tt, missing)
-  limma.out <- limma.out[rownames(data),]
-  colnames(limma.out) <- gsub('adj.P.Val', 'adjusted.p', colnames(limma.out))
+  if (nrow(missing) > 0){
+    colnames(missing) <- colnames(tt)
+    rownames(missing) <- names(zeroSums)
+    missing$adj.P.Val <- 1
+    limma.out <- rbind(tt, missing)
+    limma.out <- limma.out[rownames(data),]
+    colnames(limma.out) <- gsub('adj.P.Val', 'adjusted.p', colnames(limma.out))
+  } else {
+    limma.out <- tt
+    limma.out <- limma.out[rownames(data),]
+    colnames(limma.out) <- gsub('adj.P.Val', 'adjusted.p', colnames(limma.out))
+  }
   
   return(limma.out)
 }
