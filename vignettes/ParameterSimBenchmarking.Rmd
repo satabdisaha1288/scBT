@@ -3,7 +3,7 @@ title: "Benchmarking DE Tests"
 author: 
   - "Rance Nault"
   - "Satabdi Saha"
-package: "statsDR"
+package: "snseq.stats"
 data: "Last updated: April 12, 2021"
 output: 
   BiocStyle::html_document:
@@ -50,7 +50,7 @@ fc.calc = list()
 pz.calc = list()
 de_idx = list()
 
-for (n in 1:nrow(parameter.updates))
+for (n in 1:nrow(parameter.updates)){
   print(n)
   params@nBatches = length(sim.dose)*3
   params@batch.facLoc = rep(0.1, params@nBatches)
@@ -89,7 +89,8 @@ for (n in 1:nrow(parameter.updates))
     Dose <- factor(colData(scaRaw)$Dose)
     Dose <- relevel(Dose,"0")
     colData(scaRaw)$Dose <- Dose
-    zlmDose <- zlm(~Dose + cngeneson, sca = scaRaw)
+    #zlmDose <- zlm(~Dose + cngeneson, sca = scaRaw)
+    zlmDose <- zlm(~Dose, sca = scaRaw)
     
     summaryDose <- rep(list(list()), times = nlevels(Dose)-1)
     names(summaryDose) <- levels(Dose)[-1]
