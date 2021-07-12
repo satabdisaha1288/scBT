@@ -13,7 +13,7 @@ LRT_linearModel <- function(sce){
   output <- apply(data, 1, function(x) runLRT_Linear(x, dose))
   output <- data.frame(t(output))
   output$adjusted.p <- p.adjust(output$p.value.comb, 'fdr')
-  output[which(is.infinite(output$p.value.norm) | is.infinite(output$p.value.comb)), 'adjusted.p'] <- 1
+  output[which(is.infinite(output$p.value.norm) | is.infinite(output$p.value.comb) | is.infinite(output$lrstat_norm) | is.infinite(output$lrstat_comb)), 'adjusted.p'] <- 1
   return(output)
 }
 
