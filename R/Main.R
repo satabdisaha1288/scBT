@@ -36,7 +36,7 @@ DETest <- function(sce, method = "All", verbose = TRUE, fixed.priors = TRUE, ret
   stopifnot(validateDRsce(sce))
   
   if ("All" %in% method){
-    method = c('BAYES', 'LRT.linear', 'LRT.multiple', 'ANOVA',
+    method = c('BAYES', 'LRT.linear', 'LRT.multipleA', 'LRT.multiple', 'ANOVA',
                'WRS', 'KW', 'LIMMA-TREND', 'SEURATBIMOD')
   }
   DETest.list = list()
@@ -47,28 +47,28 @@ DETest <- function(sce, method = "All", verbose = TRUE, fixed.priors = TRUE, ret
     Y <- DoseMatrix2List(sce)
     
     timing <- system.time({
-      optim_output_null <- optim(par = runif(6, -1.25, 1.25),   # Applying optim
-                                 fn = log.lklh.marginal.null,
-                                 Y = Y,
-                                 control = list(maxit=1000), method="L-BFGS-B", upper=rep(5, 6),
-                                 lower=rep(-5, 6))
-      optim_output_alt <- optim(par = runif(6, -1.25, 1.25),   # Applying optim
-                                fn = log.lklh.marginal.alt,
-                                Y = Y,
-                                control = list(maxit=1000), method="L-BFGS-B", upper=rep(5, 6),
-                                lower=rep(-5, 6))
-      opt_par <- function(x) {
-        opt_par<-c(x[1], exp(x[-1]))
-        return(opt_par)
-      }
-      
-      par_null <- opt_par(optim_output_null$par)
-      par_alt <- opt_par(optim_output_alt$par)
-      prior.null <- 0.9
-      prior.alt <- 0.1
-      bayes.factor <- calculate_BF(Y, par_null , par_alt, prior.null, prior.alt)
-      DETest.list[["ppH0"]] <- calculate_threshold_posterior_prob_null_bayes(bayes.factor$BF,seq(0.01,1,0.01),0.05)
-      posterior_prob_null <- 1/(1+ (1/bayes.factor$BF))
+        optim_output_null <- optim(par = runif(6, -1.25, 1.25),   # Applying optim
+                                   fn = log.lklh.marginal.null,
+                                   Y = Y,
+                                   control = list(maxit=1000), method="L-BFGS-B", upper=rep(5, 6),
+                                   lower=rep(-5, 6))
+        optim_output_alt <- optim(par = runif(6, -1.25, 1.25),   # Applying optim
+                                  fn = log.lklh.marginal.alt,
+                                  Y = Y,
+                                  control = list(maxit=1000), method="L-BFGS-B", upper=rep(5, 6),
+                                  lower=rep(-5, 6))
+        opt_par <- function(x) {
+          opt_par<-c(x[1], exp(x[-1]))
+          return(opt_par)
+        }
+        
+        par_null <- opt_par(optim_output_null$par)
+        par_alt <- opt_par(optim_output_alt$par)
+        prior.null <- 0.9
+        prior.alt <- 0.1
+        bayes.factor <- calculate_BF(Y, par_null , par_alt, prior.null, prior.alt)
+        DETest.list[["ppH0"]] <- calculate_threshold_posterior_prob_null_bayes(bayes.factor$BF,seq(0.01,1,0.01),0.05)
+        posterior_prob_null <- 1/(1+ (1/bayes.factor$BF))
       
       bayes.out <- data.frame(do.call('cbind', bayes.factor))
       bayes.out$adjusted.p <- posterior_prob_null
@@ -83,11 +83,19 @@ DETest <- function(sce, method = "All", verbose = TRUE, fixed.priors = TRUE, ret
     })
     timing.summary[["LRTLin"]] <- timing
   }
+  if ("LRT.multipleA" %in% method){  
+    if (verbose) {message("Running LRT multiple test...")}
+    timing <- system.time({
+      priors <- sceCalcPriors(sce)
+      DETest.list[["LRTMultA"]] <- LRT_multipleModel(priors[[1]])
+    })
+    timing.summary[['LRTMult']] <- timing
+  }
   if ("LRT.multiple" %in% method){  
     if (verbose) {message("Running LRT multiple test...")}
     timing <- system.time({
       priors <- sceCalcPriors(sce)
-      DETest.list[["LRTMult"]] <- LRT_multipleModel(priors[[1]])
+      DETest.list[["LRTMult"]] <- LRT_multipleModelNew(priors[[1]])
     })
     timing.summary[['LRTMult']] <- timing
   }
