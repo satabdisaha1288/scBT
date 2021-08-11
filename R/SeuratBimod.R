@@ -1,4 +1,4 @@
-#' Performs a genewise Wilcoxon Rank Sum test on a SingleCellExperiment object
+#' Apply the Seurat Bimod test on a dose-response `SingleCellExperiment` object.
 #'
 #' @param sce SingleCellExperiment object with a logcounts assay
 #' and Dose column in the cell metadata
@@ -38,10 +38,6 @@ runSeuratBimod <- function(sce){
   seur.bimod$adjusted.p <- apply(p.val,
                                  1, function(x) p.adjust(min(x), 'fdr')
   )
-
-  #p.val.adj <- seur.bimod[,grepl('p_val_adj', colnames(seur.bimod))]
-  #seur.bimod$adjusted.p <- apply(p.val.adj,
-  #                               1, function(x) min(x))
 
   return(seur.bimod)
 }
