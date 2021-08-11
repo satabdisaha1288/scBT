@@ -1,40 +1,40 @@
 #' Differential expression testing
-#' 
+#'
 #' The main function to run any of the statistical tests developed as part of
 #' this package for the analysis of single-cell sequencing data.
-#' 
-#' @param sce SingleCellExperiment object with a logcounts assay and a "Dose" 
+#'
+#' @param sce SingleCellExperiment object with a logcounts assay and a "Dose"
 #' column in the rowData(sce)
-#' @param method the statistical test(s) to run. Options are "BAYES", 
+#' @param method the statistical test(s) to run. Options are "BAYES",
 #' "LRT.linear", "LRT.multiple", "ANOVA", "KW", "WRS", "CHISQ", or "MAST". Leave
-#' empty to run all tests on your dataset. 
-#' 
-#' @details 
+#' empty to run all tests on your dataset.
+#'
+#' @details
 #' Various statistical tests were adapted specifically for dose-response
-#' single-cell/single-nuclei transcriptomic data. The \code{method} enable the 
+#' single-cell/single-nuclei transcriptomic data. The \code{method} enable the
 #' following tests:
 #' \enumerate{
 #'   \item BAYES is our new Bayes implementation.. what happens when it goes to
 #'   next line?
 #'   \item LRT.linear
 #' }
-#' 
+#'
 #' @return a list of data.frames containing the statistical output for each
-#' individual tests performed. 
-#' 
+#' individual tests performed.
+#'
 #' @references Authors... 2021
-#' 
+#'
 #' @examples
 #' # Running all statistical tests
-#' DEG.testing <- DETest(sim) 
-#' 
+#' DEG.testing <- DETest(sim)
+#'
 #' @export
 DETest <- function(sce, method = "All", verbose = TRUE, fixed.priors = TRUE, return.time = TRUE){
   checkmate::assertClass(sce, "SingleCellExperiment")
   #Check if dose column is there
   #Check that method is valid
   stopifnot(validateDRsce(sce))
-  
+
   if ("All" %in% method){
     method = c('BAYES', 'LRT.linear', 'LRT.multipleA', 'LRT.multiple', 'ANOVA',
                'WRS', 'KW', 'LIMMA-TREND', 'SEURATBIMOD')
@@ -45,7 +45,7 @@ DETest <- function(sce, method = "All", verbose = TRUE, fixed.priors = TRUE, ret
   if ("BAYES" %in% method){
     if (verbose) {message("Running Bayes test...")}
     Y <- DoseMatrix2List(sce)
-    
+
     timing <- system.time({
         optim_output_null <- optim(par = runif(6, -1.25, 1.25),   # Applying optim
                                    fn = log.lklh.marginal.null,
@@ -61,7 +61,7 @@ DETest <- function(sce, method = "All", verbose = TRUE, fixed.priors = TRUE, ret
           opt_par<-c(x[1], exp(x[-1]))
           return(opt_par)
         }
-        
+
         par_null <- opt_par(optim_output_null$par)
         par_alt <- opt_par(optim_output_alt$par)
         prior.null <- 0.9
@@ -69,7 +69,7 @@ DETest <- function(sce, method = "All", verbose = TRUE, fixed.priors = TRUE, ret
         bayes.factor <- calculate_BF(Y, par_null , par_alt, prior.null, prior.alt)
         DETest.list[["ppH0"]] <- calculate_threshold_posterior_prob_null_bayes(bayes.factor$BF,seq(0.01,1,0.01),0.05)
         posterior_prob_null <- 1/(1+ (1/bayes.factor$BF))
-      
+
       bayes.out <- data.frame(do.call('cbind', bayes.factor))
       bayes.out$adjusted.p <- posterior_prob_null
       DETest.list[["BAYES"]] <- bayes.out
@@ -83,29 +83,29 @@ DETest <- function(sce, method = "All", verbose = TRUE, fixed.priors = TRUE, ret
     })
     timing.summary[["LRTLin"]] <- timing
   }
-  if ("LRT.multipleA" %in% method){  
+  if ("LRT.multiple" %in% method){
     if (verbose) {message("Running LRT multiple test...")}
     timing <- system.time({
       priors <- sceCalcPriors(sce)
-      DETest.list[["LRTMultA"]] <- LRT_multipleModel(priors[[1]])
+      DETest.list[["LRTMult"]] <- LRT_multipleModel(priors[[1]])
     })
     timing.summary[['LRTMult']] <- timing
   }
-  if ("LRT.multiple" %in% method){  
-    if (verbose) {message("Running LRT multiple test...")}
-    timing <- system.time({
-      priors <- sceCalcPriors(sce)
-      DETest.list[["LRTMult"]] <- LRT_multipleModelNew(priors[[1]])
-    })
-    timing.summary[['LRTMult']] <- timing
-  }
-  if ("CHISQ" %in% method){
-    if (verbose) {message("Running Chi Squared test...")}
-    timing <- system.time({
-      DETest.list[["CHISQ"]] <- batchChi(sce)
-    })
-    timing.summary[["CHISQ"]] <- timing
-  }
+  # if ("LRT.multiple" %in% method){
+  #   if (verbose) {message("Running LRT multiple test...")}
+  #   timing <- system.time({
+  #     priors <- sceCalcPriors(sce)
+  #     DETest.list[["LRTMult"]] <- LRT_multipleModelNew(priors[[1]])
+  #   })
+  #   timing.summary[['LRTMult']] <- timing
+  # }
+  # if ("CHISQ" %in% method){
+  #   if (verbose) {message("Running Chi Squared test...")}
+  #   timing <- system.time({
+  #     DETest.list[["CHISQ"]] <- batchChi(sce)
+  #   })
+  #   timing.summary[["CHISQ"]] <- timing
+  # }
   if ("ANOVA" %in% method){
     if (verbose) {message("Running ANOVA test...")}
     timing <- system.time({
@@ -127,10 +127,10 @@ DETest <- function(sce, method = "All", verbose = TRUE, fixed.priors = TRUE, ret
     })
     timing.summary[["KW"]] <- timing
   }
-  if ("MAST" %in% method){
-    if (verbose) {message("Running MAST test...")}
-    #DETest.list[["MAST"]] <- runMASTDR(sce)
-  }
+  # if ("MAST" %in% method){
+  #   if (verbose) {message("Running MAST test...")}
+  #   #DETest.list[["MAST"]] <- runMASTDR(sce)
+  # }
   if ("LIMMA-TREND" %in% method){
     if (verbose) {message("Running limma-trend test...")}
     timing <- system.time({
@@ -155,22 +155,22 @@ DETest <- function(sce, method = "All", verbose = TRUE, fixed.priors = TRUE, ret
 
 
 #' General function to run the statistical test abstracting much of the individual steps
-#' 
-#' @param sce SingleCellExperiment object with a logcounts assay 
+#'
+#' @param sce SingleCellExperiment object with a logcounts assay
 #' and Dose column in the cell metadata
 #' @param method the statistical test(s) to run on the sce object. Can be any of the following: Bayes, LRT.linear, LRT.multiple, ANOVA, KW, WRS, MAST, ChiSQ
-#' 
+#'
 #' @return a vector of p values from the ANOVA test
-#' 
+#'
 #' @export
 getDEGs <- function(sce, DETestoutput, threshold = 0.05, bayes.threshold = 1/3, fc.threshold = 0, pct.expressed = 0, verbose = TRUE){
   fc <- abs(calcFC(sce))
   fc.max <- data.frame(apply(fc, 1, function(x) max(x)))
   pz <- calcZeroP(sce)
   pz.min <- data.frame(apply(pz, 1, function(x) min(x)))
-  
+
   DEGenes.list <- list()
-  
+
   for (test in names(DETestoutput)){
     if (verbose) {message(paste0("Evaluating assay:", test))}
     filtered <- NULL
@@ -206,13 +206,13 @@ getDEGs <- function(sce, DETestoutput, threshold = 0.05, bayes.threshold = 1/3, 
 
 
 #' General function to run the statistical test abstracting much of the individual steps
-#' 
-#' @param sce SingleCellExperiment object with a logcounts assay 
+#'
+#' @param sce SingleCellExperiment object with a logcounts assay
 #' and Dose column in the cell metadata
 #' @param method the statistical test(s) to run on the sce object. Can be any of the following: Bayes, LRT.linear, LRT.multiple, ANOVA, KW, WRS, MAST, ChiSQ
-#' 
+#'
 #' @return a vector of p values from the ANOVA test
-#' 
+#'
 #' @export
 TruthFromSim <- function(sim, fc.threshold = 0, pct.expressed = 0){
   fc <- abs(calcFC(sim))
@@ -227,13 +227,13 @@ TruthFromSim <- function(sim, fc.threshold = 0, pct.expressed = 0){
 }
 
 #' General function to run the statistical test abstracting much of the individual steps
-#' 
-#' @param sce SingleCellExperiment object with a logcounts assay 
+#'
+#' @param sce SingleCellExperiment object with a logcounts assay
 #' and Dose column in the cell metadata
 #' @param method the statistical test(s) to run on the sce object. Can be any of the following: Bayes, LRT.linear, LRT.multiple, ANOVA, KW, WRS, MAST, ChiSQ
-#' 
+#'
 #' @return a vector of p values from the ANOVA test
-#' 
+#'
 #' @export
 filterLow <- function(sce, pct.expressed = 0){
   pz <- calcZeroP(sce)
@@ -241,17 +241,17 @@ filterLow <- function(sce, pct.expressed = 0){
   passFilt <- rownames(pz.min %>% filter(pz.min <= (1-pct.expressed)))
   sce <- sce[passFilt,]
   return(sce)
-} 
+}
 
 
 #' General function to run the statistical test abstracting much of the individual steps
-#' 
-#' @param sce SingleCellExperiment object with a logcounts assay 
+#'
+#' @param sce SingleCellExperiment object with a logcounts assay
 #' and Dose column in the cell metadata
 #' @param method the statistical test(s) to run on the sce object. Can be any of the following: Bayes, LRT.linear, LRT.multiple, ANOVA, KW, WRS, MAST, ChiSQ
-#' 
+#'
 #' @return a vector of p values from the ANOVA test
-#' 
+#'
 #' @export
 validateDRsce <- function(sce){
   value <- FALSE
@@ -265,13 +265,13 @@ validateDRsce <- function(sce){
 
 
 #' General function to run the statistical test abstracting much of the individual steps
-#' 
-#' @param sce SingleCellExperiment object with a logcounts assay 
+#'
+#' @param sce SingleCellExperiment object with a logcounts assay
 #' and Dose column in the cell metadata
 #' @param method the statistical test(s) to run on the sce object. Can be any of the following: Bayes, LRT.linear, LRT.multiple, ANOVA, KW, WRS, MAST, ChiSQ
-#' 
+#'
 #' @return a vector of p values from the ANOVA test
-#' 
+#'
 #' @export
 benchmarkDETests <- function(sce, dge.true, dge.list){
   all.genes <- rownames(sce)
@@ -288,89 +288,89 @@ benchmarkDETests <- function(sce, dge.true, dge.list){
     conf.mat <- confusion$table
     confusions.list[[test]] <- reshape2::melt(conf.mat)
     confusions.list[[test]]$tname <- test
-    
+
     # Extract additional info
-    confusions.results[[test]] <- rbind(as.matrix(confusion, what = "classes"), 
+    confusions.results[[test]] <- rbind(as.matrix(confusion, what = "classes"),
                                        as.matrix(confusion, what = "overall"))
-    
+
   }
   df.confusionMat <- do.call(rbind, lapply(confusions.list, as.data.frame))
   df.confusionMat[which(df.confusionMat$Reference == TRUE & df.confusionMat$Prediction == TRUE), 'result'] <- 'True Positive'
   df.confusionMat[which(df.confusionMat$Reference == TRUE & df.confusionMat$Prediction == FALSE), 'result'] <- 'False Negative'
   df.confusionMat[which(df.confusionMat$Reference == FALSE & df.confusionMat$Prediction == TRUE), 'result'] <- 'False Positive'
   df.confusionMat[which(df.confusionMat$Reference == FALSE & df.confusionMat$Prediction == FALSE), 'result'] <- 'True Negative'
-  
+
   df.results <- do.call(cbind, lapply(confusions.results, as.data.frame))
   colnames(df.results) <- names(confusions.results)
   df.results$value <- rownames(df.results)
   df.results <- reshape2::melt(df.results)
   colnames(df.results) <- c('metric', 'test', 'value')
-  
+
   return(list(classification = df.confusionMat, results = df.results))
 }
 
 
 #' General function to run the statistical test abstracting much of the individual steps
-#' 
-#' @param sce SingleCellExperiment object with a logcounts assay 
+#'
+#' @param sce SingleCellExperiment object with a logcounts assay
 #' and Dose column in the cell metadata
 #' @param method the statistical test(s) to run on the sce object. Can be any of the following: Bayes, LRT.linear, LRT.multiple, ANOVA, KW, WRS, MAST, ChiSQ
-#' 
+#'
 #' @return a vector of p values from the ANOVA test
-#' 
+#'
 #' @export
 benchmarkSim <- function(sim, test, p.threshold, fc.threshold = 0, pct.expressed = 0){
   # Estimate base parameters from simulated data
   fc <- abs(calcFC(sim))
   pz <- calcZeroP(sim)
-  
+
   test <- test[rownames(rowData(sim)), , drop = FALSE]
   indexed.df <- data.frame(
     adjusted.p = test$adjusted.p,
     truth = as.factor(ifelse(rowData(sim)$Model == 'Unchanged', 0, 1)),
     fc.max = data.frame(fc.max = apply(fc, 1, function(x) max(x))),
-    pz.min = data.frame(pz.min = apply(pz, 1, function(x) min(x))) 
-  )  
-  
+    pz.min = data.frame(pz.min = apply(pz, 1, function(x) min(x)))
+  )
+
   pos.idx <- which(indexed.df$adjusted.p <= p.threshold &
                     indexed.df$fc.max >= fc.threshold &
                     indexed.df$pz.min <= (1-pct.expressed)
                   )
-  
+
   pos <- indexed.df[pos.idx,]
   neg <- indexed.df[-pos.idx,]
-  
+
   classification = data.frame(
     TP = sum(pos$truth == 1),
     FP = sum(pos$truth == 0),
     TN = sum(neg$truth == 0),
     FN = sum(neg$truth == 1)
   )
-  
+
   return(classification)
 }
 
 
 #' General function to run the statistical test abstracting much of the individual steps
-#' 
-#' @param sce SingleCellExperiment object with a logcounts assay 
+#'
+#' @param sce SingleCellExperiment object with a logcounts assay
 #' and Dose column in the cell metadata
 #' @param method the statistical test(s) to run on the sce object. Can be any of the following: Bayes, LRT.linear, LRT.multiple, ANOVA, KW, WRS, MAST, ChiSQ
-#' 
+#'
 #' @return a vector of p values from the ANOVA test
-#' 
+#'
 #' @export
 benchmark <- function(indexed.df, test, p.threshold, fc.threshold, pct.expressed){
   # Estimate base parameters from simulated data
-  
+
   pos.idx <- which(indexed.df$adjusted.p <= p.threshold &
                      indexed.df$fc.max >= fc.threshold &
                      indexed.df$pz.min <= (1-pct.expressed)
   )
-  
+
   pos <- indexed.df[pos.idx,]
   neg <- indexed.df[-pos.idx,]
-  
+
   classification = c(
     TP = sum(pos$truth == 1),
     FP = sum(pos$truth == 0),
@@ -378,40 +378,40 @@ benchmark <- function(indexed.df, test, p.threshold, fc.threshold, pct.expressed
     FN = sum(neg$truth == 1),
     p.thresh = p.threshold
   )
-  
+
   return(classification)
 }
 
 
 #' General function to run the statistical test abstracting much of the individual steps
-#' 
-#' @param sce SingleCellExperiment object with a logcounts assay 
+#'
+#' @param sce SingleCellExperiment object with a logcounts assay
 #' and Dose column in the cell metadata
 #' @param method the statistical test(s) to run on the sce object. Can be any of the following: Bayes, LRT.linear, LRT.multiple, ANOVA, KW, WRS, MAST, ChiSQ
-#' 
+#'
 #' @return a vector of p values from the ANOVA test
-#' 
+#'
 #' @export
 benchmarkSim_batch <- function(sim, test, fc.threshold = 0, pct.expressed = 0){
   # Estimate base parameters from simulated data
   fc <- abs(calcFC(sim))
   pz <- calcZeroP(sim)
-  
+
   test <- test[rownames(rowData(sim)), , drop = FALSE]
   pval.list <- sort(c(unique(test$adjusted.p), 0.05))
-  
+
   indexed.df <- data.frame(
     adjusted.p = test$adjusted.p,
     truth = as.factor(ifelse(rowData(sim)$Model == 'Unchanged', 0, 1)),
     fc.max = data.frame(fc.max = apply(fc, 1, function(x) max(x))),
-    pz.min = data.frame(pz.min = apply(pz, 1, function(x) min(x))) 
-  )  
+    pz.min = data.frame(pz.min = apply(pz, 1, function(x) min(x)))
+  )
 
   indexed.df <- indexed.df %>%
     filter(fc.max >= fc.threshold & pz.min <= (1-pct.expressed))
-  
-  classification.batch <- sapply(pval.list, 
-                                 function(x) benchmark(indexed.df, 
+
+  classification.batch <- sapply(pval.list,
+                                 function(x) benchmark(indexed.df,
                                                        test, x,
                                                        fc.threshold,
                                                        pct.expressed)
@@ -422,20 +422,20 @@ benchmarkSim_batch <- function(sim, test, fc.threshold = 0, pct.expressed = 0){
 
 
 #' General function to run the statistical test abstracting much of the individual steps
-#' 
-#' @param sce SingleCellExperiment object with a logcounts assay 
+#'
+#' @param sce SingleCellExperiment object with a logcounts assay
 #' and Dose column in the cell metadata
 #' @param method the statistical test(s) to run on the sce object. Can be any of the following: Bayes, LRT.linear, LRT.multiple, ANOVA, KW, WRS, MAST, ChiSQ
-#' 
+#'
 #' @return a vector of p values from the ANOVA test
-#' 
+#'
 #' @export
 summarizeBenchmark <- function(benchmark.out){
   TP = benchmark.out$TP
   FP = benchmark.out$FP
   TN = benchmark.out$TN
   FN = benchmark.out$FN
-  
+
   df <- data.frame(
     FPR = FP/(FP + TN),
     TPR = TP/(TP + FN),
@@ -445,7 +445,7 @@ summarizeBenchmark <- function(benchmark.out){
     recall = TP/(TP + FN),
     ppv = TP/(TP + FP),
     npv = TN/(TN + FN),
-    balancedAcc = ((TP/(TP + FN)) + (TN/(TN + FP)))/2 
+    balancedAcc = ((TP/(TP + FN)) + (TN/(TN + FP)))/2
   )
   df.out = cbind(benchmark.out, df)
   return(df.out)
