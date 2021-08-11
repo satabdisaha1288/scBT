@@ -451,5 +451,15 @@ summarizeBenchmark <- function(benchmark.out){
   return(df.out)
 }
 
+#' INSERT DESCRIPTION HERE
+#'
+#' @author
+#' @param prod INSERT DESCR
+#' @param logand INSERT DESCR
+#'
+#' @export
+logProd <- function(prod, logand){
+  ifelse(prod == 0, 0, prod * log(logand))
+}
 
 
