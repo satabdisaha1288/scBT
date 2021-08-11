@@ -13,12 +13,6 @@ batchWRS <- function(sce){
   wrs.pvalues <- data.frame(t(wrs.pvalues))
   wrs.pvalues[is.na(wrs.pvalues)] <- 1
   wrs.pvalues$adjusted.p <- apply(wrs.pvalues, 1, function(x) p.adjust(min(x), 'fdr'))
-  #wrs.adj <- data.frame(apply(wrs.pvalues, 2, function(x) p.adjust(x, 'fdr')))
-  #colnames(wrs.adj) <- paste0('adjusted.p.', colnames(wrs.adj))
-  #wrs.adj$adjusted.p <- apply(wrs.adj, 1, function(x) min(x))
-  #wrs = cbind(wrs.pvalues, wrs.adj)
-  #wrs <- wrs.pvalues
-  #wrs[which(is.nan(wrs$adjusted.p)), 'adjusted.p'] <- 1
 
   return(wrs.pvalues)
 }

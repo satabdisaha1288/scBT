@@ -2,17 +2,37 @@
 % Please edit documentation in R/Bayes_test.R
 \name{DoseMatrix2List}
 \alias{DoseMatrix2List}
-\title{INSERT DESCRIPTION}
+\title{Calculate a_sigma, b_sigma}
 \usage{
 DoseMatrix2List(sce)
 }
 \arguments{
 \item{sce}{SingleCellExperiment object with a logcounts assay
 and Dose column in the cell metadata}
+
+\item{omega_mean}{Groupwise dropout means}
+
+\item{omega_var}{Groupwise dropout variance}
 }
 \value{
+a_sigma and b_sigma values
+Calculate a_w, b_w
+
+a_w and b_w values
+Calculate a_w, b_w
+
+a_w and b_w values
+INSERT DESCRIPTION
+
 INSERT DESCRIPTION
 }
 \description{
-INSERT DESCRIPTION
+Calculate a_sigma, b_sigma
+}
+\author{
+Satabdi Saha
+
+Satabdi Saha
+
+Satabdi Saha
 }
