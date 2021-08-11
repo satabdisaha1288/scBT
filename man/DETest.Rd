@@ -40,7 +40,7 @@ next line?
 }
 \examples{
 # Running all statistical tests
-DEG.testing <- DETest(sim) 
+DEG.testing <- DETest(sim)
 
 }
 \references{
