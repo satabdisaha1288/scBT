@@ -2,7 +2,7 @@
 % Please edit documentation in R/SeuratBimod.R
 \name{runSeuratBimod}
 \alias{runSeuratBimod}
-\title{Performs a genewise Wilcoxon Rank Sum test on a SingleCellExperiment object}
+\title{Apply the Seurat Bimod test on a dose-response \code{SingleCellExperiment} object.}
 \usage{
 runSeuratBimod(sce)
 }
@@ -14,5 +14,5 @@ and Dose column in the cell metadata}
 a vector of p values from the Wilcoxon Rank Sum test
 }
 \description{
-Performs a genewise Wilcoxon Rank Sum test on a SingleCellExperiment object
+Apply the Seurat Bimod test on a dose-response \code{SingleCellExperiment} object.
 }
