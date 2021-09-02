@@ -1,0 +1,429 @@
+---
+title: "Benchmarking DE Tests"
+author: 
+  - "Rance Nault"
+  - "Satabdi Saha"
+package: "statsDR"
+data: "Last updated: April 12, 2021"
+output: 
+  BiocStyle::html_document:
+    toc: true
+    toc_float: true
+  vignette: >
+    %\VignetteIndexEntry{simple example}
+    %\VignetteEngine{knitr::rmarkdown}
+    %\VignetteEncoding{UTF-8}
+---
+
+```{r}
+# Load packages
+suppressPackageStartupMessages({
+  library(snseq.stats)
+  library(dplyr)
+  library(ggplot2)
+  library(SingleCellExperiment)
+  library(splatter)
+  library(MAST)
+  library(splattdr)
+  library(tidyverse)
+  library(purrr)
+  library(PRROC)
+})
+
+# Load an example dataset with simulated data
+data(params)
+sim.dose = c(0, 0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30)
+dose.prob = rep(1/9, 9)
+```
+
+# 1. Replicating a dataset 10 times
+```{r}
+sim.list = list()
+benchmark = list()
+prroc = list()
+for (i in 1:10){
+  print(i)
+  # Set initial parameters
+  params2 = params
+  seed = sample(1:1000, 1)
+  params2@seed = seed
+  params2@nGenes = 5000
+  
+  # Simulate the dataset
+  sim = splatSimulateDR(params2, dose.names = sim.dose, dose.prob = dose.prob, lib.scale = 60*params@nGenes^-0.4, verbose = FALSE)
+  
+  # Perform differential expression analysis using all approaches
+  sim = filterLow(sim, pct.expressed = 0.001)
+  #DGEAnalysis = suppressWarnings(DETest(sim, method = 'All', verbose = TRUE))
+  DGEAnalysis = DETest(sim, method = 'BAYES', verbose = TRUE)
+  DGEAnalysis2 = DETest(sim, method = "BAYES", fixed.priors = FALSE, verbose = TRUE)
+  # Extract the truth from the simulation and the differentially expressed genes
+  trueDEGs = TruthFromSim(sim, fc.threshold = 0.0, pct.expressed = 0)  
+  significantGenes = getDEGs(sim, DGEAnalysis, threshold = 0.05, fc.threshold = 0.0, bayes.threshold = 1/3, pct.expressed = 0.05)
+  significantGenes2 = getDEGs(sim, DGEAnalysis2, threshold = 0.05, fc.threshold = 0.0, bayes.threshold = 1/3, pct.expressed = 0.05)
+  
+  # Benchmark the tests on simulated data
+  benchmarkConfusionMat = benchmarkDETests(sim, trueDEGs, significantGenes)
+  benchmarkConfusionMat2 = benchmarkDETests(sim, trueDEGs, significantGenes2)
+  benchmark[[paste0('S',seed)]] = benchmarkConfusionMat
+  benchmark[[paste0('2S',seed)]] = benchmarkConfusionMat2
+  #prroc[[paste0('S',seed)]] = runPRROC(sim, DGEAnalysis, idx = paste0('S',seed))
+  #sim.list[[paste0('S',seed)]] = sim
+}
+```
+
+```{r fig.height = 4, fig.width = 4}
+roc.combined = rbind(prroc[[1]]$ROC
+                     # prroc[[2]]$ROC,
+                     # prroc[[3]]$ROC,
+                     # prroc[[4]]$ROC,
+                     # prroc[[5]]$ROC,
+                     # prroc[[6]]$ROC,
+                     # prroc[[7]]$ROC,
+                     # prroc[[8]]$ROC,
+                     # prroc[[9]]$ROC
+                     )
+
+pr.combined = rbind(prroc[[1]]$PR,
+                     prroc[[2]]$PR,
+                     prroc[[3]]$PR,
+                     prroc[[4]]$PR,
+                     prroc[[5]]$PR,
+                     prroc[[6]]$PR,
+                     prroc[[7]]$PR,
+                     prroc[[8]]$PR,
+                     prroc[[9]]$PR
+                     )
+
+ggplot(data = roc.combined, aes(x = FPR, y = Sensitivity, group = identifier, color = test)) +
+  facet_wrap(~identifier) +
+  geom_line(size = 1.4) +
+  geom_abline(intercept = 0, slope = 1, color="gray", 
+                 linetype="dashed", size = 1) +
+  theme_bw()
+
+ggplot(data = pr.combined, aes(x = Recall, y = Precision, group = test, color = test)) +
+  facet_wrap(~identifier) +
+  geom_line(size = 1.4) +
+  # geom_abline(intercept = 0, slope = 1, color="gray", 
+  #                linetype="dashed", size = 1) +
+  theme_bw()
+```
+
+```{r}
+# params2 = params
+# benchmark2 = list()
+# for (s in c(0.1, 0.3, 0.5, 0.8, 1, 4, 10)){
+#   print(s)
+#   params2@batch.facLoc = rep(s, 27)
+#   params2@batch.facScale = rep(s, 27)
+#   sim2 = splatSimulateDR(params2, dose.names = sim.dose, dose.prob = dose.prob, verbose = FALSE)
+#   sim2 = filterLow(sim2, pct.expressed = 0.001)
+#   DGEAnalysis = suppressWarnings(DETest(sim2, method = 'All', verbose = TRUE))
+#   trueDEGs = TruthFromSim(sim2, fc.threshold = 0.0, pct.expressed = 0)  
+#   significantGenes = getDEGs(sim2, DGEAnalysis, threshold = 0.05, fc.threshold = 0.0, bayes.threshold = 1/3, pct.expressed = 0.05)
+#   benchmarkConfusionMat = benchmarkDETests(sim2, trueDEGs, significantGenes)
+#   benchmark2[[paste0('S',s)]] = benchmarkConfusionMat
+# }
+
+# params2 = params
+# benchmark3 = list()
+# for (s in c(0.1, 0.3, 1, 3, 10)){
+#   print(s)
+#   params2@de.facLoc = s
+#   sim2 = splatSimulateDR(params2, dose.names = sim.dose, dose.prob = dose.prob, verbose = FALSE)
+#   sim2 = filterLow(sim2, pct.expressed = 0.001)
+#   DGEAnalysis = suppressWarnings(DETest(sim2, method = 'All', verbose = TRUE))
+#   trueDEGs = TruthFromSim(sim2, fc.threshold = 0.0, pct.expressed = 0)  
+#   significantGenes = getDEGs(sim2, DGEAnalysis, threshold = 0.05, fc.threshold = 0.0, bayes.threshold = 1/3, pct.expressed = 0.05)
+#   benchmarkConfusionMat = benchmarkDETests(sim2, trueDEGs, significantGenes)
+#   benchmark3[[paste0('S',s)]] = benchmarkConfusionMat
+# }
+# 
+# params2 = params
+# benchmark4 = list()
+# for (s in c(0.1, 0.5, 0.8, 1.2)){
+#   print(s)
+#   params2@de.facScale = s
+#   sim2 = splatSimulateDR(params2, dose.names = sim.dose, dose.prob = dose.prob, verbose = FALSE)
+#   sim2 = filterLow(sim2, pct.expressed = 0.001)
+#   DGEAnalysis = suppressWarnings(DETest(sim2, method = 'All', verbose = TRUE))
+#   trueDEGs = TruthFromSim(sim2, fc.threshold = 0.0, pct.expressed = 0)  
+#   significantGenes = getDEGs(sim2, DGEAnalysis, threshold = 0.05, fc.threshold = 0.0, bayes.threshold = 1/3, pct.expressed = 0.05)
+#   benchmarkConfusionMat = benchmarkDETests(sim2, trueDEGs, significantGenes)
+#   benchmark4[[paste0('S',s)]] = benchmarkConfusionMat
+# }
+# 
+# params2 = params
+# benchmark5 = list()
+# for (s in c(0.05, 0.1, 0.25, 0.5, 0.75, 1)){
+#   print(s)
+#   params2@de.prob = s
+#   sim2 = splatSimulateDR(params2, dose.names = sim.dose, dose.prob = dose.prob, verbose = FALSE)
+#   sim2 = filterLow(sim2, pct.expressed = 0.001)
+#   DGEAnalysis = suppressWarnings(DETest(sim2, method = 'All', verbose = TRUE))
+#   trueDEGs = TruthFromSim(sim2, fc.threshold = 0.0, pct.expressed = 0)  
+#   significantGenes = getDEGs(sim2, DGEAnalysis, threshold = 0.05, fc.threshold = 0.0, bayes.threshold = 1/3, pct.expressed = 0.05)
+#   benchmarkConfusionMat = benchmarkDETests(sim2, trueDEGs, significantGenes)
+#   benchmark5[[paste0('S',s)]] = benchmarkConfusionMat
+# }
+```
+
+
+
+```{r}
+#prroc = runPRROC(sim, DETestoutput, idx = 2)
+ggplot(data = prroc$S144$ROC, aes(x = FPR, y = Sensitivity, group = test, color = test)) +
+  geom_line(size = 1.4) +
+  geom_abline(intercept = 0, slope = 1, color="gray", 
+                 linetype="dashed", size = 1) +
+  theme_bw()
+
+ggplot(data = prroc$S144$PR, aes(x = Recall, y = Precision, group = test, color = test)) +
+  geom_line(size = 1.4) +
+  # geom_abline(intercept = 0, slope = 1, color="gray", 
+  #                linetype="dashed", size = 1) +
+  theme_bw()
+```
+
+
+
+
+
+
+
+
+```{r}
+sim = sim2
+true_model <- rowData(sim)[,"Model"]
+true_model <- ifelse(true_model== "Unchanged", 0, 1)
+wfg<- c(runif(300,min=0.5,max=1),runif(500,min=0,max=0.5))
+  sigColVec = c('BAYES' = 'exp_bf', 'LRTLin' = 'FDR', 'LRTMult' = 'FDR', 
+                'CHISQ' = 'chisq_test_pvalue_adj','ANOVA' = 'aov.pvalues', 
+                'KW' = 'kw.pvalues')
+i = 0
+for (ref_test in na){
+  i = i + 1
+
+  fg = DETestoutput[[ref_test]][,sigColVec[ref_test]][true_model == 1]
+  bg = DETestoutput[[ref_test]][,sigColVec[ref_test]][true_model == 0]
+  lab <- c(rep(1,length(fg)),rep(0,length(bg)))
+  X_test <- c(fg, bg)
+  wroc_test <- roc.curve(scores.class0 = X_test, weights.class0 = lab, 
+                    curve = TRUE, max.compute = T, min.compute = T, 
+                    rand.compute = T)
+  
+  if (i == 1){
+    wroc_plot <- plot(wroc_test, max.plot = TRUE, min.plot = TRUE,
+                  rand.plot = TRUE, fill.area = TRUE, color = 2,
+                  scale.color = heat.colors(100))    
+  } else {
+    wroc_plot <- plot(wroc_test, add = TRUE, color = i)
+  }
+}
+
+```
+
+
+```{r}
+sim = sim2
+true_model <- rowData(sim)[,"Model"]
+true_model <- ifelse(true_model== "Unchanged",0,1)
+wfg<- c(runif(300,min=0.5,max=1),runif(500,min=0,max=0.5))
+for (ref_test in names(DETestoutput)){
+  X_test <- c(DETestoutput$KW$kw.pvalues[true_model == 1], 
+              DETestoutput$KW$kw.pvalues[true_model == 0])
+  for (test in names(DETestoutput)){
+    X_test <- c(DETestoutput$ANOVA$aov.pvalues[true_model == 1], 
+              DETestoutput$ANOVA$aov.pvalues[true_model == 0])
+    lab <- c(rep(1,length(fg)),rep(0,length(bg)))
+    
+    # ROC Curve
+    wroc_ref <- roc.curve(scores.class0 = X_ref, weights.class0 = lab, 
+                         curve = TRUE, max.compute = T, min.compute = T, 
+                         rand.compute = T)
+    wroc_test <- roc.curve(scores.class0 = X_test, weights.class0 = lab, 
+                        curve = TRUE, max.compute = T, min.compute = T, 
+                        rand.compute = T)
+    wroc_plot <- plot(wroc_ref, max.plot = TRUE, min.plot = TRUE,
+                  rand.plot = TRUE, fill.area = TRUE, color = 2,
+                  scale.color = heat.colors(100))
+    wroc_plot <- plot(wroc_test, add = TRUE, color = 3)
+  }
+}
+```
+
+
+```{r}
+  if ("BAYES" %in% method){
+    if (verbose) {message("Running Bayes test...")}
+    priors <- sceCalcPriors(sce)
+    DETest.list[["BAYES"]] <- bayesDETest(priors)
+  }
+  if ("LRT.linear" %in% method){
+    if (verbose) {message("Running LRT linear test...")}
+    DETest.list[["LRTLin"]] <- LRT_linearModel(sce)
+  }
+  if ("LRT.multiple" %in% method){  
+    if (verbose) {message("Running LRT multiple test...")}
+    priors <- sceCalcPriors(sce)
+    DETest.list[["LRTMult"]] <- LRT_multipleModel(priors[[1]])
+  }
+  if ("CHISQ" %in% method){
+    if (verbose) {message("Running Chi Squared test...")}
+    DETest.list[["CHISQ"]] <- runChi(sce)
+  }
+  if ("ANOVA" %in% method){
+    if (verbose) {message("Running ANOVA test...")}
+    DETest.list[['ANOVA']] <- batchANOVA(sce)
+  }
+  if ("WRS" %in% method){
+    if (verbose) {message("Running Wilcoxon rank sum test...")}
+    DETest.list[["WRS"]] <- batchWRS(sce)
+  }
+  if ("KW" %in% method){
+    if (verbose) {message("Running Kruskal Wallis test...")}
+    DETest.list[['KW']] <- batchKW(sce)
+  }
+  if ("MAST" %in% method){
+    if (verbose) {message("Running MAST test...")}
+    #DETest.list[["MAST"]] <- runMASTDR(sce)
+  }
+
+
+
+
+
+
+
+
+
+
+
+if (verbose) {message(paste0("Evaluating assay:", test))}
+filtered <- NULL
+
+
+  if (ncol(DETestoutput[[test]]) == 1){
+    merged.df <- Reduce(merge, lapply(list(DETestoutput[[test]], fc.max, pz.min), function(x) data.frame(x, rn = row.names(x))))
+    colnames(merged.df) <- c("Gene", "pvalue", "fc.max", "pz.min")
+    filtered <- merged.df %>% filter(pvalue <= threshold & fc.max >= fc.threshold & pz.min <= (1-pct.expressed))
+  } else if (test != 'LRTLin' & test != 'LRTMult' & test != 'BAYES'){
+    stopifnot(identical(dim(DETestoutput[[test]]), dim(fc)) == TRUE)
+    DETestoutput[[test]] <- DETestoutput[[test]][rownames(fc),]
+    DETestoutput[[test]] <- as.matrix(DETestoutput[[test]])
+    DETestoutput[[test]][which(fc < fc.threshold)] = NA
+    min.pval <- data.frame(apply(DETestoutput[[test]], 1, function(x) min(x)))
+    merged.df <- Reduce(merge, lapply(list(min.pval, fc.max, pz.min), function(x) data.frame(x, rn = row.names(x))))
+    colnames(merged.df) <- c("Gene", "pvalue", "fc.max", "pz.min")
+    filtered <- merged.df %>% filter(pvalue <= threshold & fc.max >= fc.threshold & pz.min <= (1-pct.expressed))
+  } else if (test == 'BAYES') {
+    bayes_exp_bf <- DETestoutput[[test]][,"exp_bf", drop = FALSE]
+    merged.df <- Reduce(merge, lapply(list(bayes_exp_bf, fc.max, pz.min), function(x) data.frame(x, rn = row.names(x))))
+    colnames(merged.df) <- c("Gene", "exp_bf", "fc.max", "pz.min")
+    filtered <- merged.df %>% filter(exp_bf <= bayes.threshold & fc.max >= fc.threshold & pz.min <= (1-pct.expressed))
+  } else if (test == 'LRTLin' | test == 'LRTMult') {
+    FDR <- DETestoutput[[test]][,'FDR', drop = FALSE]
+    merged.df <- Reduce(merge, lapply(list(FDR, fc.max, pz.min), function(x) data.frame(x, rn = row.names(x))))
+    colnames(merged.df) <- c("Gene", "fdr", "fc.max", "pz.min")
+    filtered <- merged.df %>% filter(fdr <= threshold & fc.max >= fc.threshold & pz.min <= (1-pct.expressed))
+  }
+}
+```
+
+
+
+
+
+
+# Visualizing the classification for one simulation
+```{r fig.width = 7.5, fig.height = 3.8}
+ggplot(benchmark[[1]]$classification, aes(fill = result, y = value, x = tname)) +
+  geom_text(aes(label = value), position = position_dodge(width = 1),
+            size = 3, vjust = -0.5) +
+  geom_bar(position = "dodge", stat = "identity", color = 'black') + 
+  ggtitle('1') +
+  #scale_fill_manual(values = c('#e34242', '#c70000', '#58fc5b', '#04cc08')) +
+  theme_bw()
+```
+
+```{r fig.width = 7.5, fig.height = 3.8}
+ggplot(benchmark[[2]]$classification, aes(fill = result, y = value, x = tname)) +
+  geom_text(aes(label = value), position = position_dodge(width = 1),
+            size = 3, vjust = -0.5) +
+  geom_bar(position = "dodge", stat = "identity", color = 'black') + 
+  ggtitle('1 - Fixed priors') +
+  #scale_fill_manual(values = c('#e34242', '#c70000', '#58fc5b', '#04cc08')) +
+  theme_bw()
+```
+
+```{r fig.width = 7.5, fig.height = 3.8}
+ggplot(benchmark[[3]]$classification, aes(fill = result, y = value, x = tname)) +
+  geom_text(aes(label = value), position = position_dodge(width = 1),
+            size = 3, vjust = -0.5) +
+  geom_bar(position = "dodge", stat = "identity", color = 'black') + 
+  ggtitle('2') +
+  #scale_fill_manual(values = c('#e34242', '#c70000', '#58fc5b', '#04cc08')) +
+  theme_bw()
+```
+
+```{r fig.width = 7.5, fig.height = 3.8}
+ggplot(benchmark[[4]]$classification, aes(fill = result, y = value, x = tname)) +
+  geom_text(aes(label = value), position = position_dodge(width = 1),
+            size = 3, vjust = -0.5) +
+  geom_bar(position = "dodge", stat = "identity", color = 'black') + 
+  ggtitle('2 - Fixed priors') +
+  #scale_fill_manual(values = c('#e34242', '#c70000', '#58fc5b', '#04cc08')) +
+  theme_bw()
+```
+
+# Summary statistics for all tests consisting of replicating simulations with 
+# the same starting parameters but a different seed value. 
+```{r fig.width = 18, fig.height = 6}
+benchmarked.flat = transpose(benchmark) %>% map(bind_rows)
+ggplot(data = benchmarked.flat$results, aes(x = test, y = value, fill = test)) +
+  facet_wrap(~metric, scales = 'free') +
+  geom_boxplot() + 
+  geom_jitter(color = 'black') +
+  theme_bw()
+```
+
+# Summary statistics when simulating datasets with a varying amount of noise
+# between replicates. 
+```{r fig.width = 18, fig.height = 6}
+benchmarked.flat = transpose(benchmark2) %>% map(bind_rows)
+ggplot(data = benchmarked.flat$results, aes(x = test, y = value, fill = test)) +
+  facet_wrap(~metric, scales = 'free') +
+  geom_boxplot() + 
+  geom_jitter(color = 'black') +
+  theme_bw()
+```
+
+```{r fig.width = 18, fig.height = 6}
+benchmarked.flat = transpose(benchmark3) %>% map(bind_rows)
+ggplot(data = benchmarked.flat$results, aes(x = test, y = value, fill = test)) +
+  facet_wrap(~metric, scales = 'free') +
+  geom_boxplot() + 
+  geom_jitter(color = 'black') +
+  theme_bw()
+```
+
+
+```{r fig.width = 18, fig.height = 6}
+benchmarked.flat = transpose(benchmark4) %>% map(bind_rows)
+ggplot(data = benchmarked.flat$results, aes(x = test, y = value, fill = test)) +
+  facet_wrap(~metric, scales = 'free') +
+  geom_boxplot() + 
+  geom_jitter(color = 'black') +
+  theme_bw()
+```
+
+
+```{r fig.width = 18, fig.height = 6}
+benchmarked.flat = transpose(benchmark5) %>% map(bind_rows)
+ggplot(data = benchmarked.flat$results, aes(x = test, y = value, fill = test)) +
+  facet_wrap(~metric, scales = 'free') +
+  geom_boxplot() + 
+  geom_jitter(color = 'black') +
+  theme_bw()
+```

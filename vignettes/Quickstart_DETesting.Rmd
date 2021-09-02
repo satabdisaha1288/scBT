@@ -32,14 +32,8 @@ suppressPackageStartupMessages({
   library(ggplot2)
   library(SingleCellExperiment)
   library(splatter)
-  #library(scater)
-  #library(matrixStats)
-  #library(caret)
-  #library(Matrix)
-  #library(data.table)
   #library(MAST)
   library(splattdr)
-  #library(checkmate)
   library(snseq.stats)
 })
 
@@ -67,7 +61,6 @@ nGenes
 Bayes differential expression test - basic overview of the test and demonstrate. Define what the priors contain and explain the individual elements
 ```{r}
 # Calculate Bayes prior hyperparameters
-#
 priors = sceCalcPriors(sim)
 ```
 

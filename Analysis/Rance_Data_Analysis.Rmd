@@ -1,0 +1,364 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Read the hepatocyte data, cell metadata and gene metadata
+
+```{r}
+normalized_logtransformed_testGenes_hepatocytes<-
+  readRDS("normalized_logtransformed_testGenes_hepatocytes.rds")
+gene_metadata_hepatocytes<-readRDS("gene_metadata_hepatocytes.rds")
+rownames(gene_metadata_hepatocytes)<-seq(1,199,1)
+cell_metadata_hepatocytes<-readRDS("cell_metadata_hepatocytes.rds")
+```
+
+```{r}
+dose_level<-factor(cell_metadata_hepatocytes$Dose)
+normalized_logtransformed_testGenes_hepatocytes_dose<-data.frame(t(normalized_logtransformed_testGenes_hepatocytes),cell_metadata_hepatocytes[,3])
+colnames(normalized_logtransformed_testGenes_hepatocytes_dose)[200]<-"Dose"
+```
+
+Create seperate data matrices for seperate dose groups
+
+```{r}
+
+data<-rep(list(data.frame()), nlevels(dose_level))
+names(data)<-levels(dose_level)
+for(i in levels(dose_level))
+{
+data[[i]]<- subset(normalized_logtransformed_testGenes_hepatocytes_dose
+                   , Dose == i, select = Cyp1a1:Gm12979)
+##data[[i]] is a list of all the seperate dose gene*cell matrices
+data[[i]][] <- lapply(data[[i]], function(x) as.numeric(as.character(x)))
+data[[i]]<-t(data[[i]])
+}
+
+#Filtering out genes with less than 2 cell values
+z<-rep(list(list()),nlevels(dose_level))
+names(z)<-levels(dose_level)
+for( i in levels(dose_level))
+{
+  z[[i]]<-which(apply(data[[i]],1,function(x) length(which(x !=0))) < 2)
+}
+library(tidyverse)
+idx<-(names(z %>% flatten_int()))
+
+for( i in levels(dose_level))
+{
+  data[[i]]<-data[[i]][-Reduce(intersect, z),]
+}
+gene_metadata_hepatocytes_idx<-gene_metadata_hepatocytes[-Reduce(intersect, z),]
+```
+
+Prior selection under alternative hypothesis
+
+```{r}
+library(matrixStats)
+m<-vector()
+sigma_mean<-vector()
+sigma_var<-vector()
+omega_mean<-vector()
+omega_var<-vector()
+for(i in  levels(dose_level))
+{
+  m[i]<-mean(rowMeans(replace(data[[i]], data[[i]] == 0, NA), na.rm = TRUE),na.rm = TRUE)
+  sigma_mean[i]<-mean(rowVars(replace(as.matrix(data[[i]]),as.matrix(data[[i]]) == 0, NA), na.rm = TRUE),na.rm = TRUE)
+  sigma_var[i]<-var(rowVars(replace(as.matrix(data[[i]]),as.matrix(data[[i]]) == 0, NA), na.rm = TRUE),na.rm = TRUE)
+  omega_mean[i]<-mean(apply(data[[i]],1,function(x) length(which(x==0))/length(x)))
+  omega_var[i]<-var(apply(data[[i]],1,function(x) length(which(x==0))/length(x)))
+}
+m_0=mean(m)
+tau_t_mu = tau_c_mu = tau_mu = c(0.5,1,2,3)
+#Use sigma_mean and sigma_var to solve for b_sigma and a_sigma
+b_sigma = 1
+a_sigma = 6
+#Use mean and variance of omega to solve for a_w and b_w
+a_w = a_c_w = a_t_w = 8
+b_w = b_c_w = b_t_w = 2
+prior_Alter<-c(1-((0.83)^(1/200)),0.01,0.05,0.1)
+prior_Null<- 1-prior_Alter
+```
+
+
+```{r}
+#actual bayes factor computed in overleaf
+##BF FDR control using jeffreys 
+a<-rep(list(list()),nrow(data[["0"]]))
+bf_actual_01<-rep(list(a), nlevels(dose_level)-1)
+names(bf_actual_01)<-levels(dose_level)[-1]
+source("Bayes_factor.R")
+for (i in levels(dose_level)[-1])
+{
+  for(j in 1:nrow(data[["0"]]))
+  {
+    bf_actual_01[[i]][[j]]<-Bayes_factor(Y_t=as.matrix(data[[i]][j,]),
+                           Y_c=as.matrix(data[["0"]][j,]),m_t0,m_c0,m_0,
+                           tau_t_mu,tau_c_mu, tau_mu=tau_mu[3], 
+                           b_sigma,a_sigma,a_w,a_c_w,a_t_w,b_w,b_t_w,b_c_w,
+                           prior_alt = prior_Alter[4],
+                           prior_null = prior_Null[4])
+  }
+}
+```
+
+```{r}
+
+l_bf_act_01<-rep(list(vector(mode = "numeric",
+                             length = nrow(data[["0"]]))), nlevels(dose_level)-1)
+bf_act_01<-rep(list(vector(mode = "numeric",
+                             length = nrow(data[["0"]]))), nlevels(dose_level)-1)
+Decision_bf_act_01<- rep(list(vector(mode = "numeric",
+                             length = nrow(data[["0"]]))), nlevels(dose_level)-1)
+Decision_bf_act_01_new<- rep(list(vector(mode = "numeric",
+                             length = nrow(data[["0"]]))), nlevels(dose_level)-1)
+Decision_bf_act_01_logFC<-rep(list(vector(mode = "numeric",
+                             length = nrow(data[["0"]]))), nlevels(dose_level)-1)
+log_fold_change<-rep(list(vector(mode = "numeric",
+                             length = nrow(data[["0"]]))), nlevels(dose_level)-1)
+
+names(l_bf_act_01)<-levels(dose_level)[-1]
+names(bf_act_01)<-levels(dose_level)[-1]
+names(Decision_bf_act_01)<-levels(dose_level)[-1]
+names(log_fold_change)<-levels(dose_level)[-1]
+names(Decision_bf_act_01_new)<-levels(dose_level)[-1]
+names(Decision_bf_act_01_logFC)<-levels(dose_level)[-1]
+
+for (i in levels(dose_level)[-1])
+{
+  for(k in 1: nrow(data[["0"]]))
+  {
+  l_bf_act_01[[i]][k]<-bf_actual_01[[i]][[k]]$l_Bayes_factor_01
+  log_fold_change[[i]][k] = logFC(data[["0"]][k,],data[[i]][k,])
+  }
+  bf_act_01[[i]]<-exp(l_bf_act_01[[i]])
+  Decision_bf_act_01[[i]]<-ifelse(bf_act_01[[i]] > 1, "Fail to Reject H_0",ifelse( bf_act_01[[i]] <= 1 & bf_act_01 [[i]] > (1/3), "Weak evidence against H_0",ifelse(bf_act_01[[i]] <= (1/3) & bf_act_01[[i]] > (1/10), "Moderate evidence against H_0", ifelse(bf_act_01[[i]] <= (1/10) & bf_act_01[[i]] > (1/30), "Substantial evidence against H_0",ifelse(bf_act_01 [[i]]<= (1/30) & bf_act_01 [[i]] > (1/100), " Strong evidence against H_0", ifelse(bf_act_01 [[i]] <= (1/100) & bf_act_01 [[i]] > (1/300), "Very strong evidence against H_0", "Decisive evidence against H_0")))))) 
+Decision_bf_act_01_new[[i]]<-ifelse(Decision_bf_act_01[[i]] == "Fail to Reject H_0" | Decision_bf_act_01[[i]] == "Weak evidence against H_0", "Random", "Sig")
+Decision_bf_act_01_new[[i]] <-factor(Decision_bf_act_01_new[[i]],levels = c("Sig","Random"))
+Decision_bf_act_01_logFC[[i]]<-ifelse(Decision_bf_act_01_new[[i]] == "Sig" & 
+                                        log_fold_change[[i]] > log(1.5), "Upregulated", 
+                                      ifelse(Decision_bf_act_01_new[[i]] == "Sig" & 
+                                        log_fold_change[[i]] < -log(1.5), 
+                            "Downregulated","Random"))
+                
+Decision_bf_act_01_logFC[[i]]<-factor(Decision_bf_act_01_logFC[[i]], 
+                                      levels = c("Upregulated","Downregulated","Random"))
+}
+Regulation_new<-ifelse(gene_metadata_hepatocytes$Regualtion == "Upregulated" | gene_metadata_hepatocytes$Regualtion == "Downregulated", "Sig","Random")
+c<-rep(list(data.frame()),nlevels(dose_level)-1)
+names(c)<-levels(dose_level)[-1]
+confusionMatrix_bf_act_01<-rep(list(list()),nlevels(dose_level)-1)
+names(confusionMatrix_bf_act_01)<-levels(dose_level)[-1]
+for(i in levels(dose_level)[-1])
+{
+  c[[i]]<-data.frame(bf_act_01[[i]],Decision_bf_act_01_new[[i]],
+                     Regulation_new,Decision_bf_act_01_logFC[[i]],
+                     gene_metadata_hepatocytes$Regualtion)
+  confusionMatrix_bf_act_01[[i]]<-confusionMatrix(c[[i]]$Decision_bf_act_01_new..i..,
+                                    factor(c[[i]]$Regulation_new, 
+                                           levels = c("Sig","Random")))
+  colnames(c[[i]])<-c("BF_Test_Statistic","Pred Decision","True Decision","Pred Regulation",
+                      "True Regulation")
+  rownames(c[[i]])<-rownames(data[["0"]])
+}
+#Save the list as a csv file
+#lapply(c, function(x) write.table( data.frame(x), 'test.csv'  , append= T, sep=',' ))
+capture.output(c, file = "test_file.txt")
+capture.output(confusionMatrix_bf_act_01, file = "test_file_confusionMatrix.txt")
+
+confusionMatrix_bf_act_01
+```
+
+
+```{r}
+# library
+#Confusion Matrix Plot
+library(ggplot2)
+# create a dataset
+dose <- c(rep(0.01 , 4) , rep(0.03 , 4) , rep(0.1 , 4) , rep(0.3 , 4) , rep(1 , 4),rep(3 , 4) ,
+            rep(10 , 4),rep(30 , 4)  )
+type <- rep(c("TP" , "FP" , "FN","TN") , 8)
+value1<-c(9,2,24,164,13,6,20,160,16,6,17,160,22,5,11,161,28,6,5,160,30,11,3,155,32,39,1,127,33,73,0,93)
+value2<-c(8,2,25,164,13,6,20,160,16,5,17,161,22,5,11,161,27,6,6,160,30,11,3,155,32,39,1,127,33,72,0,94)
+value3<-c(8,2,25,164,13,5,20,161,16,5,17,161,22,5,11,161,27,6,6,160,30,11,3,155,32,37,1,129,33,68,0,98)
+value4<-c(8,2,25,164,13,5,20,161,15,5,18,161,22,5,11,161,27,6,6,160,30,11,3,155,32,37,1,129,33,65,0,101)
+value5<-c(11,2,22,164,13,6,20,160,16,6,17,160,22,5,11,161,28,6,5,160,30,11,3,155,32,39,1,127,33,74,0,92)
+value6<-c(9,2,24,164,13,6,20,160,16,5,17,161,22,5,11,161,27,6,6,160,30,11,3,155,32,39,1,127,33,72,0,94)
+value7<-c(9,2,24,164,13,5,20,161,16,5,17,161,22,5,11,161,27,6,6,160,30,11,3,155,32,37,1,129,33,70,0,96)
+value8<-c(9,2,24,164,13,5,20,161,15,5,18,161,22,5,11,161,27,6,6,160,30,11,3,155,32,36,1,130,33,68,0,98)
+value9<-c(11,2,22,164,13,6,20,160,16,6,17,160,22,5,11,161,29,6,4,160,30,11,3,155,32,39,1,127,33,74,0,92)
+value10<-c(10,2,23,164,13,6,20,160,16,5,17,161,22,5,11,161,28,6,5,160,30,11,3,155,32,39,1,127,33,73,0,93)
+value11<-c(9,2,24,164,13,5,20,161,15,5,18,161,22,5,11,161,28,6,5,160,30,11,3,155,32,37,1,129,33,70,0,96)
+value12<-c(9,2,24,164,12,5,21,161,15,5,18,161,22,5,11,161,28,6,5,160,30,11,3,155,32,36,1,130,33,68,0,98)
+cf <- data.frame(dose,entry,value1,value2,value3,value4,value5,value6,value7,value8,value9,value10,
+                 value11,value12)
+ 
+```
+
+```{r}
+# Grouped
+a1<-ggplot(cf, aes(fill=type, y=value1, x=as.factor(dose))) + 
+  geom_text(aes(label=value1), position = position_dodge(width=1),
+            size=3,vjust = -0.5)+ geom_bar(position="dodge", stat="identity")+ 
+            xlab("Dose")+ ylab("Confusion Matrix Values")+
+             ggtitle("tau_mu = 0.5, P(H_a)= 0.0009")
+a1 + theme(plot.title = element_text(color="red", size=10, face="bold.italic"))
+a2<-ggplot(cf, aes(fill=type, y=value2, x=as.factor(dose))) + 
+  geom_text(aes(label=value2), position = position_dodge(width=1),
+            size=3,vjust = -0.5)+ geom_bar(position="dodge", stat="identity")+
+        xlab("Dose")+ ylab("Confusion Matrix Values")+
+            ggtitle("tau_mu = 0.5, P(H_a)= 0.01")
+a2 + theme(plot.title = element_text(color="red", size=10, face="bold.italic"))
+a3<-ggplot(cf, aes(fill=type, y=value3, x=as.factor(dose))) + 
+  geom_text(aes(label=value3), position = position_dodge(width=1),
+            size=3,vjust = -0.5)+ geom_bar(position="dodge", stat="identity")+
+  xlab("Dose")+ ylab("Confusion Matrix Values")+
+            ggtitle("tau_mu = 0.5, P(H_a)= 0.05")
+a3 + theme(plot.title = element_text(color="red", size=10, face="bold.italic"))
+a4<-ggplot(cf, aes(fill=type, y=value4, x=as.factor(dose))) + 
+  geom_text(aes(label=value4), position = position_dodge(width=1),
+            size=3,vjust = -0.5)+ geom_bar(position="dodge", stat="identity")+
+  xlab("Dose")+ ylab("Confusion Matrix Values")+
+            ggtitle("tau_mu = 0.5, P(H_a)= 0.1")
+a4 + theme(plot.title = element_text(color="red", size=10, face="bold.italic"))
+
+a5<-ggplot(cf, aes(fill=type, y=value5, x=as.factor(dose))) + 
+  geom_text(aes(label=value5), position = position_dodge(width=1),
+            size=3,vjust = -0.5)+ geom_bar(position="dodge", stat="identity")+
+  xlab("Dose")+ ylab("Confusion Matrix Values")+
+            ggtitle("tau_mu = 1, P(H_a)= 0.0009")
+a5 + theme(plot.title = element_text(color="red", size=10, face="bold.italic"))
+
+a6<-ggplot(cf, aes(fill=type, y=value6, x=as.factor(dose))) + 
+  geom_text(aes(label=value6), position = position_dodge(width=1),
+            size=3,vjust = -0.5)+ geom_bar(position="dodge", stat="identity")+
+  xlab("Dose")+ ylab("Confusion Matrix Values")+
+            ggtitle("tau_mu = 1, P(H_a)= 0.01")
+a6 + theme(plot.title = element_text(color="red", size=10, face="bold.italic"))
+
+a7<-ggplot(cf, aes(fill=type, y=value7, x=as.factor(dose))) + 
+  geom_text(aes(label=value7), position = position_dodge(width=1),
+            size=3,vjust = -0.5)+ geom_bar(position="dodge", stat="identity")+
+  xlab("Dose")+ ylab("Confusion Matrix Values")+
+            ggtitle("tau_mu = 1, P(H_a)= 0.05")
+a7 + theme(plot.title = element_text(color="red", size=10, face="bold.italic"))
+a8<-ggplot(cf, aes(fill=type, y=value8, x=as.factor(dose))) + 
+  geom_text(aes(label=value8), position = position_dodge(width=1),
+            size=3,vjust = -0.5)+ geom_bar(position="dodge", stat="identity")+
+  xlab("Dose")+ ylab("Confusion Matrix Values")+
+            ggtitle("tau_mu = 1, P(H_a)= 0.1")
+a8 + theme(plot.title = element_text(color="red", size=10, face="bold.italic"))
+
+a9<-ggplot(cf, aes(fill=type, y=value9, x=as.factor(dose))) + 
+  geom_text(aes(label=value9), position = position_dodge(width=1),
+            size=3,vjust = -0.5)+ geom_bar(position="dodge", stat="identity")+
+  xlab("Dose")+ ylab("Confusion Matrix Values")+
+            ggtitle("tau_mu = 2, P(H_a)= 0.0009")
+a9 + theme(plot.title = element_text(color="red", size=10, face="bold.italic"))
+
+a10<-ggplot(cf, aes(fill=type, y=value10, x=as.factor(dose))) + 
+  geom_text(aes(label=value10), position = position_dodge(width=1),
+            size=3,vjust = -0.5)+ geom_bar(position="dodge", stat="identity")+
+  xlab("Dose")+ ylab("Confusion Matrix Values")+
+            ggtitle("tau_mu = 2, P(H_a)= 0.01")
+a10 + theme(plot.title = element_text(color="red", size=10, face="bold.italic"))
+
+a11<-ggplot(cf, aes(fill=type, y=value11, x=as.factor(dose))) + 
+  geom_text(aes(label=value11), position = position_dodge(width=1),
+            size=3,vjust = -0.5)+ geom_bar(position="dodge", stat="identity")+
+  xlab("Dose")+ ylab("Confusion Matrix Values")+
+            ggtitle("tau_mu = 2, P(H_a)= 0.05")
+a11 + theme(plot.title = element_text(color="red", size=10, face="bold.italic"))
+
+a12<-ggplot(cf, aes(fill=type, y=value12, x=as.factor(dose))) + 
+  geom_text(aes(label=value12), position = position_dodge(width=1),
+            size=3,vjust = -0.5)+ geom_bar(position="dodge", stat="identity")+
+  xlab("Dose")+ ylab("Confusion Matrix Values")+
+            ggtitle("tau_mu = 2, P(H_a)= 0.1")
+a12 + theme(plot.title = element_text(color="red", size=10, face="bold.italic"))
+```
+
+```{r}
+ggarrange(a1 + theme(plot.title = element_text(color="red", size=10, face="bold.italic")),
+          a2 + theme(plot.title = element_text(color="red", size=10, face="bold.italic")), 
+          labels = c("A", "B", "C","D"),
+          ncol = 2, nrow = 1)
+ggarrange(a3 + theme(plot.title = element_text(color="red", size=10, face="bold.italic")),
+          a4 + theme(plot.title = element_text(color="red", size=10, face="bold.italic")), 
+          labels = c("A", "B", "C","D"),
+          ncol = 2, nrow = 1)
+ggarrange(a5 + theme(plot.title = element_text(color="red", size=10, face="bold.italic")),
+          a6 + theme(plot.title = element_text(color="red", size=10, face="bold.italic")), 
+          labels = c("A", "B", "C","D"),
+          ncol = 2, nrow = 1)
+
+ggarrange(a7 + theme(plot.title = element_text(color="red", size=10, face="bold.italic")),
+          a8 + theme(plot.title = element_text(color="red", size=10, face="bold.italic")), 
+          labels = c("A", "B", "C","D"),
+          ncol = 2, nrow = 1)
+
+ggarrange(a9 + theme(plot.title = element_text(color="red", size=10, face="bold.italic")),
+          a10 + theme(plot.title = element_text(color="red", size=10, face="bold.italic")), 
+          labels = c("A", "B", "C","D"),
+          ncol = 2, nrow = 1)
+
+ggarrange(a11 + theme(plot.title = element_text(color="red", size=10, face="bold.italic")),
+          a12 + theme(plot.title = element_text(color="red", size=10, face="bold.italic")), 
+          labels = c("A", "B", "C","D"),
+          ncol = 2, nrow = 1)
+
+```
+
+
+```{r}
+#Create gene list for making figure to show DE curve for each gene
+gene<-rep(list(NA),33)
+for(k in 1:33)
+{
+  for(i in levels(dose_level)[-1])
+  {
+    gene[[k]]<-c(gene[[k]],ifelse(c[[i]]$`Pred Decision`[k] == "Sig",1,0))
+  }
+}
+for(k in 1:33)
+{
+  gene[[k]]<-gene[[k]][-1]
+}
+names(gene)<-rownames(c[["0.01"]])[1:33]
+```
+
+```{r}
+gene_data<-rep(list(data.frame()),33)
+x = levels(dose_level)[-1]
+for(i in 1:33)
+{
+  gene_data[[i]]<-data.frame(x,gene[[i]])
+  colnames(gene_data[[i]])<-c("Dose","Sig_ind")
+}
+
+ggplot() + 
+  geom_line(data = gene_data[[1]] , aes(x = Dose, y = Sig_ind), 
+            color = "blue") +
+  geom_line(data = gene_data[[2]], aes(x = Dose, y = Sig_ind), 
+            color = "red") +
+  xlab('Dose') +
+  ylab('Sig_Ind')
+```
+
+```{r}
+#x is a gene expression vector for gene A under control
+#y is a gene expression vector for gene A under treatment
+logFC<-function(x,y)
+{
+ lfc<-mean(y) - mean(x)
+ return(lfc)
+}
+```
+
+
+```{r}
+
+```
+
+
+

@@ -1,0 +1,582 @@
+---
+title: "Differential gene expression analysis for dose dependent simulated data"
+output: html_notebook
+---
+
+Data Description: 
+
+simulated.data is simulated lognormcounts matrix having 2500 genes and 4500 cells. 
+simulated.cell.metadata is the cell metadata matrix having the dose level information for the 4500 cells. There are a total of 9 dose groups with 500 cells each.
+simulated.gene.metadata is the gene metadata matrix having 2500 rows and 4 columns, where the columns correspond to gene names,model: the model dose response curve that the gene follows and Direction: which states whether the gene is UpRegulated or DownRegulated.
+
+```{r}
+simD.list.sparse<-readRDS("~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/simDR.list.sparse.RData")
+```
+
+```{r}
+#Read data from a single cell object
+simulated.data<-logcounts(simD.list.sparse$`Stellate Cells 0.1 3 0.111111111111111:0.111111111111111:0.111111111111111:0.111111111111111:0.111111111111111:0.111111111111111:0.111111111111111:0.111111111111111:0.111111111111111`)
+simulated.cell.metadata<-colData(simD.list.sparse$`Stellate Cells 0.1 3 0.111111111111111:0.111111111111111:0.111111111111111:0.111111111111111:0.111111111111111:0.111111111111111:0.111111111111111:0.111111111111111:0.111111111111111`)
+simulated.gene.metadata<-rowData(simD.list.sparse$`Stellate Cells 0.1 3 0.111111111111111:0.111111111111111:0.111111111111111:0.111111111111111:0.111111111111111:0.111111111111111:0.111111111111111:0.111111111111111:0.111111111111111`)
+a=apply(simulated.data,1, function(x) length(which(x==0)))
+b<-which(a==ncol(simulated.data))
+simulated.data<-simulated.data[-b,]
+simulated.gene.metadata<-simulated.gene.metadata[-b,]
+```
+
+```{r}
+library(data.table)
+library(ggplot2)
+simulated.data_df <-as.data.table(t(as.matrix(simulated.data)))
+k0<-qplot(Gene2, data = simulated.data_df[Gene2  < 
+                    quantile(as.numeric(simulated.data_df$Gene2), probs = .99)]) 
+simulated.data_df<- simulated.data_df[, Gene2_pos := ifelse(Gene2 > 0, Gene2 , NA)]
+k1<-ggplot(simulated.data_df, aes(x = Gene2_pos)) + 
+  geom_histogram(aes(y = ..density..), colour = "black", fill = "White") +
+  stat_function(fun = dnorm, args = MASS::fitdistr(simulated.data_df[Gene2 > 0 ,Gene2_pos ], "normal")$estimate)
+ggpubr::ggarrange(k0,k1,ncol=2,nrow=1) 
+
+```
+
+```{r}
+#dose_levels of simulated data
+dose_level<-factor(simulated.cell.metadata$Dose)
+#Create a joint data-frame with cells as rows, columns as genes and last column as
+#Dose group
+simulated.data_dose<-data.frame(t(as.matrix(simulated.data)),
+                                              simulated.cell.metadata[,"Dose"])
+colnames(simulated.data_dose)[ncol(simulated.data_dose)]<-"Dose"
+```
+
+```{r}
+#Create a data list seperating out the data for the dose groups
+data<-rep(list(data.frame()), nlevels(dose_level))
+names(data)<-levels(dose_level)
+for(i in levels(dose_level))
+{
+data[[i]]<- subset(simulated.data_dose
+                   , Dose == i, select = Gene1 : Gene22213 )
+##data[[i]] is a list of all the seperate dose gene*cell matrices
+data[[i]][] <- lapply(data[[i]], function(x) as.numeric(as.character(x)))
+data[[i]]<-t(data[[i]])
+}
+```
+
+Prior Selection
+```{r}
+library(matrixStats)
+m<-vector()
+sigma_mean<-vector()
+sigma_var<-vector()
+omega_mean<-vector()
+omega_var<-vector()
+for(i in  levels(dose_level))
+{
+  #Dose group specific mean of expression levels for all genes
+  m[i]<-mean(rowMeans(replace(data[[i]], data[[i]] == 0, NA), na.rm = TRUE),na.rm = TRUE)
+  #Dose group specific SD's for all genes
+  sigma_mean[i]<-mean(rowVars(replace(as.matrix(data[[i]]),as.matrix(data[[i]]) == 0, NA), na.rm = TRUE),na.rm = TRUE)
+  sigma_var[i]<-var(rowVars(replace(as.matrix(data[[i]]),as.matrix(data[[i]]) == 0, NA), na.rm = TRUE),na.rm = TRUE)
+  #Dose group specific mean dropout proportions for all genes
+  omega_mean[i]<-mean(apply(data[[i]],1,function(x) length(which(x==0))/length(x)))
+  omega_var[i]<-var(apply(data[[i]],1,function(x) length(which(x==0))/length(x)))
+}
+#Choose the scaling constant tau_mu
+tau_t_mu = tau_c_mu = tau_mu = c(0.5,1,2,3)
+tau_k_mu<-rep(1,9)
+names(tau_k_mu)<- levels(dose_level)
+#Use sigma_mean and sigma_var to solve for b_sigma and a_sigma
+b_sigma = 1
+a_sigma = 6
+#Use mean and variance of omega to solve for a_w and b_w
+#We keep the same values of a_w and b_w for all groups since the omega mean and omega SD values are more or less consistent.
+a_w = a_t_w = 0.8 #t refers to the treatment groups
+b_w = b_t_w = 0.2
+#length(which(simulated.gene.metadata$Category == "Positive"))
+prop_DE<-length(which(simulated.gene.metadata$Model != "Unchanged"))/length(simulated.gene.metadata$Model)
+# Calculate prior_Null for all three approaches local,global,multiplicity corrected
+prior_Null<- c( (1-prop_DE), 0.9 ,((1-prop_DE)^(2/length(simulated.gene.metadata$Model))))
+prior_Alter<-1-prior_Null
+```
+
+```{r}
+#actual bayes factor multiple computed in overleaf
+##BF FDR control using jeffreys 
+bf_multiple_01<-rep(list(list()), nrow(data[["0"]]))
+source('~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/R/BayesFactorMultiple.R')
+
+  for(j in 1:nrow(data[["0"]]))
+  {
+    bf_multiple_01[[j]]<-Bayes_factor_multiple(
+                           Y = list(Y_1=as.matrix(data[["0"]][j,]), 
+                           Y_2=as.matrix(data[["0.01"]][j,]),
+                           Y_3=as.matrix(data[["0.03"]][j,]),
+                           Y_4=as.matrix(data[["0.1"]][j,]),
+                           Y_5=as.matrix(data[["0.3"]][j,]),
+                           Y_6=as.matrix(data[["1"]][j,]),
+                           Y_7=as.matrix(data[["3"]][j,]),
+                           Y_8=as.matrix(data[["10"]][j,]),
+                           Y_9=as.matrix(data[["30"]][j,])),
+                           m_0=mean(m),m=m,K=9,
+                           tau_k_mu =tau_k_mu,tau_mu=tau_mu[2], 
+                           b_sigma=1,a_sigma=6,a_w=8,b_w=2,
+                           prior_alt =prior_Alter[2],
+                           prior_null = prior_Null[2])
+  }
+```
+
+```{r}
+#bf influence of mean
+bf_multiple_01_mu<-vector()
+#bf influence of dropout
+bf_multiple_01_omega<-vector()
+for ( j in 1:nrow(data[["0"]]))
+{
+  bf_multiple_01_mu[j]<-bf_multiple_01[[j]]$l_D0
+  bf_multiple_01_omega[j]<-bf_multiple_01[[j]]$l_D1 +   bf_multiple_01[[j]]$l_D2 + bf_multiple_01[[j]]$l_D3 + bf_multiple_01[[j]]$l_D4 + bf_multiple_01[[j]]$l_D5
+}
+names(bf_multiple_01_mu)= names(bf_multiple_01_omega) = rownames(data[["0"]])
+```
+
+```{r}
+#Decision for all group differential expression
+#Extract the log-BF values
+l_bf_multiple_01<-vector(mode = "numeric", length = nrow(data[["0"]]))
+#Get the BF values
+exp_bf_multiple_01<-vector(mode = "numeric", length = nrow(data[["0"]]))
+#Calculate log-fold changes between the highest and lowest dose groups
+log_fold_change<-vector()
+#names(exp_bf_multiple_01) = names(log_fold_change) = rownames(data[["0"]])
+#Layered thresholding for BF
+Decision_bf_multiple_01<-vector(mode = "numeric", length = nrow(data[["0"]]))
+# Accept Reject Thresholding for BF
+Decision_bf_multiple_01_new<-vector(mode = "numeric", length = nrow(data[["0"]]))
+for (j in 1: length(bf_multiple_01))
+{
+  l_bf_multiple_01[j]<-bf_multiple_01[[j]]$l_Bayes_factor_01
+  exp_bf_multiple_01[j]<-exp(l_bf_multiple_01[j])
+  log_fold_change[j] = logFC(data[["0"]][j,],data[["30"]][j,])
+  Decision_bf_multiple_01[j]<- ifelse(exp_bf_multiple_01[j] > 1, "Fail to Reject H_0",ifelse( exp_bf_multiple_01[j] <= 1 & exp_bf_multiple_01[j] > (1/3), "Weak evidence against H_0",ifelse(exp_bf_multiple_01[j] <= (1/3) & exp_bf_multiple_01[j] > (1/10), "Moderate evidence against H_0", ifelse(exp_bf_multiple_01[j] <= (1/10) & exp_bf_multiple_01[j] > (1/30), "Substantial evidence against H_0",ifelse(exp_bf_multiple_01[j]<= (1/30) & exp_bf_multiple_01[j]> (1/100), " Strong evidence against H_0", ifelse(exp_bf_multiple_01[j] <= (1/100) & exp_bf_multiple_01[j] > (1/300), "Very strong evidence against H_0", "Decisive evidence against H_0"))))))
+  Decision_bf_multiple_01_new[j]<-ifelse(Decision_bf_multiple_01[j] == "Fail to Reject H_0" | Decision_bf_multiple_01[j] == "Weak evidence against H_0" |Decision_bf_multiple_01[j] =="Moderate evidence against H_0", "Negative", "Positive")
+}
+names(exp_bf_multiple_01)<-rownames(data[["0"]])
+names(l_bf_multiple_01)<-rownames(data[["0"]])
+Decision_bf_multiple_01_new<-
+    factor(Decision_bf_multiple_01_new,levels = c("Positive","Negative"))
+names(Decision_bf_multiple_01_new)<-rownames(data[["0"]])
+#Decisions based on BF and log-fold change
+Decision_bf_multiple_01_new_lfc<- ifelse(Decision_bf_multiple_01_new == "Positive" & abs(log_fold_change)> log(1.5) , "Positive","Negative")
+Decision_bf_multiple_01_new_lfc<-
+    factor(Decision_bf_multiple_01_new_lfc,levels = c("Positive","Negative"))
+#True decision found in the reference
+True_decision<-ifelse(simulated.gene.metadata$Model!="Unchanged",  "Positive","Negative")
+True_decision<-factor(True_decision, levels = c("Positive","Negative"))
+True_decision<-True_decision[]
+names(True_decision)<-rownames(data[["0"]])
+#Create a dataframe
+c<-data.frame(exp_bf_multiple_01,Decision_bf_multiple_01_new,
+              Decision_bf_multiple_01_new_lfc,True_decision)
+colnames(c)<-c("BF_Test_Statistic","Pred_Decision","Pred_Decision_LFC","True_Decision")
+rownames(c)<-rownames(data[["0"]])
+#Confusion Matrix for BF test
+caret::confusionMatrix(c$Pred_Decision,c$True_Decision)
+#Confusion Matrix for BF test combined with log-fold change
+caret::confusionMatrix(c$Pred_Decision_LFC,c$True_Decision)
+#Total no of predicted DE genes
+length(which(Decision_bf_multiple_01_new == "Positive"))
+```
+
+```{r}
+#Determine the genes predicted to be non-DE by the Bayes-factor test
+non_sig_genes_BF<-rownames(data[["0"]])[which(Decision_bf_multiple_01_new == "Negative" & True_decision== "Negative" | Decision_bf_multiple_01_new == "Negative" & True_decision== "Positive")]
+simulated.data_dose_non_sig_genes_BF<-simulated.data_dose[,c(non_sig_genes_BF,"Dose")]
+#Subset the data list for non-significant genes (as determined by the BF test)
+data_non_sig_genes_BF<-lapply(data, function(x) x[non_sig_genes_BF,])
+```
+
+```{r}
+#Bayes factor calculation for the non-significant genes using a pairwise
+#BF comparison between group 0 and 30
+##BF FDR control using jeffreys 
+bf_pairwise_non_sig_genes_BF_01<-rep(list(list()), nrow(data_non_sig_genes_BF[["0"]]))
+source('~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/R/BayesFactorMultiple.R')
+
+  for(j in 1:nrow(data_non_sig_genes_BF[["0"]]))
+  {
+    bf_pairwise_non_sig_genes_BF_01[[j]]<-Bayes_factor_multiple(
+                Y = list(Y_1=as.matrix(data_non_sig_genes_BF[["0"]][j,]), 
+               Y_9=as.matrix(data_non_sig_genes_BF[["30"]][j,])),
+                           m_0=mean(m),m=c(m[1],m[9]),K=2,
+                           tau_k_mu =c(tau_k_mu[1],tau_k_mu[9]),
+                           tau_mu=tau_mu[2], 
+                           b_sigma=1,a_sigma=6,a_w=8,b_w=2,
+                           prior_alt =prior_Alter[2],
+                           prior_null = prior_Null[2])
+  }
+```
+
+```{r}
+#Decision for pairwise differential expression for non-significant group
+l_bf_pairwise_non_sig_genes_BF_01<-vector(mode = "numeric", length = nrow(data_non_sig_genes_BF[["0"]]))
+exp_bf_pairwise_non_sig_genes_BF_01<-vector(mode = "numeric", length = nrow(data_non_sig_genes_BF[["0"]]))
+log_fold_change<-vector()
+#names(exp_bf_multiple_01) = names(log_fold_change) = rownames(data_non_sig_genes_BF[["0"]])
+Decision_bf_pairwise_non_sig_genes_BF_01<-vector(mode = "numeric", length = nrow(data_non_sig_genes_BF[["0"]]))
+Decision_bf_pairwise_non_sig_genes_BF_01_new<-vector(mode = "numeric", length = nrow(data_non_sig_genes_BF[["0"]]))
+for (j in 1: length(bf_pairwise_non_sig_genes_BF_01))
+{
+  l_bf_pairwise_non_sig_genes_BF_01[j]<-bf_pairwise_non_sig_genes_BF_01[[j]]$l_Bayes_factor_01
+  exp_bf_pairwise_non_sig_genes_BF_01[j]<-exp(l_bf_pairwise_non_sig_genes_BF_01[j])
+  log_fold_change[j] = logFC(data_non_sig_genes_BF[["0"]][j,],data_non_sig_genes_BF[["30"]][j,])
+  
+  Decision_bf_pairwise_non_sig_genes_BF_01[j]<- ifelse(exp_bf_pairwise_non_sig_genes_BF_01[j] > 1, "Fail to Reject H_0",ifelse( exp_bf_pairwise_non_sig_genes_BF_01[j] <= 1 & exp_bf_pairwise_non_sig_genes_BF_01[j] > (1/3), "Weak evidence against H_0",ifelse(exp_bf_pairwise_non_sig_genes_BF_01[j] <= (1/3) & exp_bf_pairwise_non_sig_genes_BF_01[j] > (1/10), "Moderate evidence against H_0", ifelse(exp_bf_pairwise_non_sig_genes_BF_01[j] <= (1/10) & exp_bf_pairwise_non_sig_genes_BF_01[j] > (1/30), "Substantial evidence against H_0",ifelse(exp_bf_pairwise_non_sig_genes_BF_01[j]<= (1/30) & exp_bf_pairwise_non_sig_genes_BF_01[j]> (1/100), " Strong evidence against H_0", ifelse(exp_bf_pairwise_non_sig_genes_BF_01[j] <= (1/100) & exp_bf_pairwise_non_sig_genes_BF_01[j] > (1/300), "Very strong evidence against H_0", "Decisive evidence against H_0"))))))
+}
+Decision_bf_pairwise_non_sig_genes_BF_01_new<-ifelse(Decision_bf_pairwise_non_sig_genes_BF_01 == "Fail to Reject H_0" | Decision_bf_pairwise_non_sig_genes_BF_01 == "Weak evidence against H_0" |Decision_bf_pairwise_non_sig_genes_BF_01 =="Moderate evidence against H_0", "Negative", "Positive")
+names(exp_bf_pairwise_non_sig_genes_BF_01)<-rownames(data_non_sig_genes_BF[["0"]])
+names(l_bf_pairwise_non_sig_genes_BF_01)<-rownames(data_non_sig_genes_BF[["0"]])
+Decision_bf_pairwise_non_sig_genes_BF_01_new<-
+    factor(Decision_bf_pairwise_non_sig_genes_BF_01_new,levels = c("Positive","Negative"))
+names(Decision_bf_pairwise_non_sig_genes_BF_01_new)<-rownames(data_non_sig_genes_BF[["0"]])
+Decision_bf_pairwise_non_sig_genes_BF_01_new_lfc<- ifelse(Decision_bf_pairwise_non_sig_genes_BF_01_new == "Positive" & abs(log_fold_change)> log(1.5) , "Positive","Negative")
+Decision_bf_pairwise_non_sig_genes_BF_01_new_lfc<-
+    factor(Decision_bf_pairwise_non_sig_genes_BF_01_new_lfc,levels = c("Positive","Negative"))
+True_decision<-ifelse(simulated.gene.metadata$Model!="Unchanged",  "Positive","Negative")
+names(True_decision)<-rownames(data[["0"]])
+True_decision_non_sig_genes_BF_01<-True_decision[non_sig_genes_BF]
+True_decision_non_sig_genes_BF_01<-factor(True_decision_non_sig_genes_BF_01, levels = c("Positive","Negative"))
+names(True_decision_non_sig_genes_BF_01)<-rownames(data_non_sig_genes_BF[["0"]])
+c_pair<-data.frame(exp_bf_pairwise_non_sig_genes_BF_01,
+              Decision_bf_pairwise_non_sig_genes_BF_01_new,
+              Decision_bf_pairwise_non_sig_genes_BF_01_new_lfc,
+              True_decision_non_sig_genes_BF_01)
+colnames(c_pair)<-c("BF_Test_Statistic","Pred_Decision","Pred_Decision_LFC","True_Decision")
+rownames(c_pair)<-rownames(data_non_sig_genes_BF[["0"]])
+caret::confusionMatrix(c_pair$Pred_Decision,
+         c_pair$True_Decision)
+caret::confusionMatrix(c_pair$Pred_Decision_LFC,c_pair$True_Decision)
+
+length(which(Decision_bf_pairwise_non_sig_genes_BF_01_new == "Positive"))
+```
+
+```{r}
+#Determine the genes predicted to be DE by the Bayes-factor test
+sig_genes_BF<-rownames(data[["0"]])[which(Decision_bf_multiple_01_new == "Positive" & True_decision== "Positive" | Decision_bf_multiple_01_new == "Positive" & True_decision== "Negative")]
+simulated.data_dose_sig_genes_BF<-simulated.data_dose[,c(sig_genes_BF,"Dose")]
+#Subset the data list for non-significant genes (as determined by the BF test)
+data_sig_genes_BF<-lapply(data, function(x) x[sig_genes_BF,])
+```
+
+
+```{r}
+#Pairwise bayes factor calculations for the significant genes
+##BF FDR control using jeffreys 
+a<-rep(list(list()),nrow(data_sig_genes_BF[["0"]]))
+bf_actual_01<-rep(list(a), nlevels(dose_level)-1)
+names(bf_actual_01)<-levels(dose_level)[-1]
+source('~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/R/BayesFactorMultiple.R')
+for (i in levels(dose_level)[-1])
+{
+  for(j in 1:nrow(data_sig_genes_BF[["0"]]))
+  {
+    bf_actual_01[[i]][[j]]<-
+      Bayes_factor_multiple(Y = list(Y_1=as.matrix(data_sig_genes_BF[["0"]][j,]), 
+               Y_2=as.matrix(data_sig_genes_BF[[i]][j,])),
+               m_0=mean(m["0"] + m[i]),m=c(m["0"],m[i]),K=2,
+                           tau_k_mu =c(tau_k_mu["0"],tau_k_mu[i]),
+                           tau_mu=tau_mu[2], 
+                           b_sigma=1,a_sigma=6,a_w=8,b_w=2,
+                           prior_alt =prior_Alter[2],
+                           prior_null = prior_Null[2]
+               )
+  }
+}
+```
+
+```{r}
+#Decisions for two group differential expression for only significant genes
+l_bf_act_01<-rep(list(vector(mode = "numeric",
+                             length = nrow(data_sig_genes_BF[["0"]]))), nlevels(dose_level)-1)
+bf_act_01<-rep(list(vector(mode = "numeric",
+                             length = nrow(data_sig_genes_BF[["0"]]))), nlevels(dose_level)-1)
+Decision_bf_act_01<- rep(list(vector(mode = "numeric",
+                             length = nrow(data_sig_genes_BF[["0"]]))), nlevels(dose_level)-1)
+Decision_bf_act_01_new<- rep(list(vector(mode = "numeric",
+                             length = nrow(data_sig_genes_BF[["0"]]))), nlevels(dose_level)-1)
+
+names(l_bf_act_01)<-levels(dose_level)[-1]
+names(bf_act_01)<-levels(dose_level)[-1]
+names(Decision_bf_act_01)<-levels(dose_level)[-1]
+names(Decision_bf_act_01_new)<-levels(dose_level)[-1]
+
+for (i in levels(dose_level)[-1])
+{
+  for(k in 1: nrow(data_sig_genes_BF[["0"]]))
+  {
+  l_bf_act_01[[i]][k]<-bf_actual_01[[i]][[k]]$l_Bayes_factor_01
+  }
+  bf_act_01[[i]]<-exp(l_bf_act_01[[i]])
+  Decision_bf_act_01[[i]]<-ifelse(bf_act_01[[i]] > 1, "Fail to Reject H_0",ifelse( bf_act_01[[i]] <= 1 & bf_act_01 [[i]] > (1/3), "Weak evidence against H_0",ifelse(bf_act_01[[i]] <= (1/3) & bf_act_01[[i]] > (1/10), "Moderate evidence against H_0", ifelse(bf_act_01[[i]] <= (1/10) & bf_act_01[[i]] > (1/30), "Substantial evidence against H_0",ifelse(bf_act_01 [[i]]<= (1/30) & bf_act_01 [[i]] > (1/100), " Strong evidence against H_0", ifelse(bf_act_01 [[i]] <= (1/100) & bf_act_01 [[i]] > (1/300), "Very strong evidence against H_0", "Decisive evidence against H_0")))))) 
+Decision_bf_act_01_new[[i]]<-ifelse(Decision_bf_act_01[[i]] == "Fail to Reject H_0" | Decision_bf_act_01[[i]] == "Weak evidence against H_0" |
+                    Decision_bf_act_01[[i]] == "Moderate evidence against H_0", "Negative", "Positive")
+Decision_bf_act_01_new[[i]] <-
+                          factor(Decision_bf_act_01_new[[i]],levels = c("Positive","Negative"))
+
+}
+True_decision<-ifelse(simulated.gene.metadata$Model!="Unchanged",  "Positive","Negative")
+names(True_decision)<-rownames(data[["0"]])
+True_decision_sig_genes_BF_01<-True_decision[sig_genes_BF]
+True_decision_sig_genes_BF_01<-factor(True_decision_sig_genes_BF_01, levels = c("Positive","Negative"))
+names(True_decision_sig_genes_BF_01)<-rownames(data_sig_genes_BF[["0"]])
+
+c<-rep(list(data.frame()),nlevels(dose_level)-1)
+names(c)<-levels(dose_level)[-1]
+confusionMatrix_bf_act_01<-rep(list(list()),nlevels(dose_level)-1)
+names(confusionMatrix_bf_act_01)<-levels(dose_level)[-1]
+for(i in levels(dose_level)[-1])
+{
+  c[[i]]<-data.frame(bf_act_01[[i]],Decision_bf_act_01_new[[i]],
+                     True_decision_sig_genes_BF_01)
+  confusionMatrix_bf_act_01[[i]]<-caret::confusionMatrix(c[[i]]$Decision_bf_act_01_new..i..,
+                                    factor(c[[i]]$True_decision_sig_genes_BF_01, 
+                                           levels = c("Positive","Negative")))
+  colnames(c[[i]])<-c("BF_Test_Statistic","Pred Decision","True Decision")
+  rownames(c[[i]])<-rownames(data_sig_genes_BF[["0"]])
+}
+#Save the list as a csv file
+#lapply(c, function(x) write.table( data.frame(x), 'test.csv'  , append= T, sep=',' ))
+#capture.output(c, file = "clust_1_short_filtered_results.txt")
+#capture.output(confusionMatrix_bf_act_01, file = "clust_1_short_filtered_results_confusionMatrix.txt")
+#save(c, file="simulated_data_results.Rdata")
+
+```
+
+```{r}
+# library
+#Confusion Matrix Plot
+library(ggplot2)
+# create a dataset
+dose <- c(rep(0.01 , 4) , rep(0.03 , 4) , rep(0.1 , 4) , rep(0.3 , 4) , rep(1 , 4),rep(3 , 4) ,
+            rep(10 , 4),rep(30 , 4)  )
+type <- rep(c("TP" , "FP" , "FN","TN") , 8)
+value1<-c(29,2,527,271,39,7,517,266,68,68,488,205,108,134,448,139,
+          202,234,354,39,291,272,265,1,435,273,121,0,556,273,0,0)
+cf <- data.frame(dose,type,value1)
+```
+
+```{r}
+# Grouped
+ggplot(cf, aes(fill=type, y=value1, x=as.factor(dose))) + 
+  geom_text(aes(label=value1), position = position_dodge(width=1),
+            size=3,vjust = -0.5)+ geom_bar(position="dodge", stat="identity")+ 
+            xlab("Dose")+ ylab("Confusion Matrix Values")+
+             ggtitle("")+ 
+              theme(plot.title = element_text(color="red", size=10, face="bold.italic"))
+
+```
+
+```{r}
+#Conduct the ANOVA and Kruskal-Wallis Test for each gene
+source('~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/R/anova_test.R')
+source('~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/R/KW_test.R')
+#Here data is a dataframe of n cells as rows and p+1 columns with first p columns as p genes and the last 
+#column is the dose information
+
+for(j in 1: nrow(data[["0"]]))
+{
+  log_fold_change[j] = logFC(data[["0"]][j,],data[["30"]][j,])
+}
+mydata<-simulated.data_dose
+my_data_kruskal_p_value<-KW_test(mydata)
+my_data_kruskal_p_value<-p.adjust(my_data_kruskal_p_value,"fdr")
+my_data_anova_p_value<-anova_test(mydata)
+my_data_anova_p_value<-p.adjust(my_data_anova_p_value,"fdr")
+my_data_anova_pred_dec<-ifelse(my_data_anova_p_value < 0.05, "Positive","Negative")
+my_data_anova_pred_dec_lfc<-ifelse(my_data_anova_pred_dec=="Positive"
+       &abs(log_fold_change)>log(1.5),"Positive","Negative")
+my_data_kruskal_pred_dec<-ifelse(my_data_kruskal_p_value < 0.05, "Positive","Negative")
+my_data_kruskal_pred_dec_lfc<-ifelse(my_data_kruskal_pred_dec=="Positive"
+       &abs(log_fold_change)>log(1.5),"Positive","Negative")
+my_data_true_dec<-ifelse(simulated.gene.metadata$Model !="Unchanged" , "Positive","Negative")
+```
+
+```{r}
+#Generate the confusion matrix for the ANOVA and KW test wrt the reference data
+caret::confusionMatrix(factor(my_data_anova_pred_dec,levels=c("Positive","Negative")),                      factor(my_data_true_dec,levels=c("Positive","Negative")))
+caret::confusionMatrix(factor(my_data_anova_pred_dec_lfc,levels=c("Positive","Negative")),                      factor(my_data_true_dec,levels=c("Positive","Negative")))
+```
+
+```{r}
+caret::confusionMatrix(factor(my_data_kruskal_pred_dec,levels=c("Positive","Negative")),                      factor(my_data_true_dec,levels=c("Positive","Negative")))
+caret::confusionMatrix(factor(my_data_kruskal_pred_dec_lfc,levels=c("Positive","Negative")),                      factor(my_data_true_dec,levels=c("Positive","Negative")))
+```
+
+```{r}
+#Check KW test for the non-significant genes from BF
+source('~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/R/KW_test.R')
+#Here data is a dataframe of n cells as rows and p+1 columns with first p columns as p genes and the last 
+#column is the dose information
+mydata<-simulated.data_dose_non_sig_genes_BF
+my_data_kruskal_p_value<-KW_test(mydata)
+my_data_kruskal_p_value<-p.adjust(my_data_kruskal_p_value,"fdr")
+my_data_kruskal_pred_dec<-ifelse(my_data_kruskal_p_value < 0.05, "Positive","Negative")
+my_data_true_dec<-ifelse(simulated.gene.metadata[non_sig_genes_BF,]$Model !="Unchanged" , "Positive","Negative")
+caret::confusionMatrix(factor(my_data_kruskal_pred_dec,levels=c("Positive","Negative")),                      factor(my_data_true_dec,levels=c("Positive","Negative")))
+```
+
+
+
+```{r}
+#Calculate log fold change pairwise
+log_fold_change<-rep(list(vector(mode = "numeric",
+                             length = nrow(data[["0"]]))), nlevels(dose_level)-1)
+names(log_fold_change)<-levels(dose_level)[-1]
+for (i in levels(dose_level)[-1])
+{
+  for(k in 1: nrow(data[["0"]]))
+  {
+  log_fold_change[[i]][k] = logFC(data[["0"]][k,],data[[i]][k,])
+  }
+}
+log_fold_change_gene_median<-vector()
+  for (j in 1: nrow(data[["0"]]))
+  {
+    log_fold_change_gene_median[j]<-median(abs(log_fold_change[["0.01"]][j]),
+                                    abs(log_fold_change[["0.03"]][j]),
+                                    abs(log_fold_change[["0.1"]][j]),
+                                    abs(log_fold_change[["0.3"]][j]),
+                                    abs(log_fold_change[["1"]][j]),
+                                    abs(log_fold_change[["3"]][j]),
+                                    abs(log_fold_change[["10"]][j]),
+                                    abs(log_fold_change[["30"]][j]))
+  }
+names(log_fold_change_gene_median)<-rownames(data[["0"]])
+```
+
+```{r}
+source('~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/R/WilcoxonRankSumTest.R')
+WRS<-rep(list(data.table()),times=nlevels(dose_level)-1)
+for (i in 1:8 )
+{
+   WRS[[i]]<-WRS_test(simulated.data_dose,levels(dose_level)[1],levels(dose_level)[i+1]) 
+}
+WRS_adjust<-lapply(WRS, function(x) p.adjust(x, method = "fdr"))
+WRS_dec<-lapply(WRS_adjust,function(x) ifelse(x<0.05,"Positive","Negative"))
+WRS_dec_lfc<-Map(function(x,y) ifelse(x=="Positive"& abs(y)>log(1.5),"Positive","Negative"),WRS_dec,log_fold_change)
+names(WRS_dec_lfc)<-levels(dose_level)[2:9]
+names(WRS_dec)<-levels(dose_level)[2:9]
+
+
+sig_WRS<-(union(which(WRS_dec[["0.01"]]=="Positive"),union(which(WRS_dec[["0.03"]]=="Positive"),union(which(WRS_dec[["0.1"]]=="Positive"),union(which(WRS_dec[["0.3"]]=="Positive"),union(which(WRS_dec[["1"]]=="Positive"),union(which(WRS_dec[["3"]]=="Positive"),union(which(WRS_dec[["10"]]=="Positive"),which(WRS_dec[["30"]]=="Positive")))))))))
+length(sig_WRS)
+sig_WRS<-rownames(data[["0"]])[sig_WRS]
+sig_WRS_lfc<-(union(which(WRS_dec_lfc[["0.01"]]=="Positive"),union(which(WRS_dec_lfc[["0.03"]]=="Positive"),union(which(WRS_dec_lfc[["0.1"]]=="Positive"),union(which(WRS_dec_lfc[["0.3"]]=="Positive"),union(which(WRS_dec_lfc[["1"]]=="Positive"),union(which(WRS_dec_lfc[["3"]]=="Positive"),union(which(WRS_dec_lfc[["10"]]=="Positive"),which(WRS_dec_lfc[["30"]]=="Positive")))))))))
+length(sig_WRS_lfc)
+sig_WRS_lfc<-rownames(data[["0"]])[sig_WRS_lfc]
+
+true_dec<-ifelse(simulated.gene.metadata$Model!="Unchanged","Positive","Negative")
+pred_dec_WRS_comb<-ifelse(rownames(simulated.gene.metadata)%in%sig_WRS == TRUE,"Positive","Negative")
+pred_dec_WRS_comb_lfc<-ifelse(rownames(simulated.gene.metadata)%in%sig_WRS_lfc == TRUE,"Positive","Negative")
+caret::confusionMatrix(factor(pred_dec_WRS_comb,levels=c("Positive","Negative")),factor(true_dec,levels = c("Positive","Negative")))
+caret::confusionMatrix(factor(pred_dec_WRS_comb_lfc,levels=c("Positive","Negative")),factor(true_dec,levels = c("Positive","Negative")))
+```
+
+```{r}
+#Perform the LRT test for multiple classes.
+for(j in 1: nrow(data[["0"]]))
+{
+  log_fold_change[j] = logFC(data[["0"]][j,],data[["30"]][j,])
+}
+LRT_mult<-rep(list(list()),nrow(data[["0"]]))
+data_ind<-lapply(data,function(x) ifelse(x>0,1,0))
+for( i in 1: nrow(data[["0"]]))
+{
+  LRT_mult[[i]]<-LRT_multiple_groups(data = list(data[["0"]][i,][data_ind[["0"]][i,]>0],
+                                  data[["0.01"]][i,][data_ind[["0.01"]][i,]>0],
+                                  data[["0.03"]][i,][data_ind[["0.03"]][i,]>0],
+                                  data[["0.1"]][i,][data_ind[["0.1"]][i,]>0],
+                                  data[["0.3"]][i,][data_ind[["0.3"]][i,]>0],
+                                  data[["1"]][i,][data_ind[["1"]][i,]>0],
+                                  data[["3"]][i,][data_ind[["3"]][i,]>0],
+                                  data[["10"]][i,][data_ind[["10"]][i,]>0],
+                                  data[["30"]][i,][data_ind[["30"]][i,]>0]),
+                      data_ind = list(data_ind[["0"]][i,],
+                                  data_ind[["0.01"]][i,],
+                                  data_ind[["0.03"]][i,],
+                                  data_ind[["0.1"]][i,],
+                                  data_ind[["0.3"]][i,],
+                                  data_ind[["1"]][i,],
+                                  data_ind[["3"]][i,],
+                                  data_ind[["10"]][i,],
+                                  data_ind[["30"]][i,]))
+
+}
+LRT_mult_p_value<-sapply(LRT_mult,function(x) x[2,3])
+LRT_mult_p_value_adj<- p.adjust(LRT_mult_p_value, method = "fdr")
+pred_dec_LRT_mult<-ifelse(LRT_mult_p_value_adj<0.05,"Positive","Negative")
+true_dec<-ifelse(simulated.gene.metadata$Model !="Unchanged" , "Positive","Negative")
+caret::confusionMatrix(factor(pred_dec_LRT_mult,levels=c("Positive","Negative")),factor(true_dec,levels = c("Positive","Negative")))
+pred_dec_LRT_mult_lfc<-ifelse(pred_dec_LRT_mult=="Positive"
+       &abs(as.vector(unlist(log_fold_change)))>log(1.5),"Positive","Negative")
+caret::confusionMatrix(factor(pred_dec_LRT_mult_lfc,levels=c("Positive","Negative")),factor(true_dec,levels = c("Positive","Negative")))
+```
+
+```{r}
+
+method <- c(rep("BF" , 4) , rep("Anova" , 4) , rep("KW" , 4) , rep("Wilcox" , 4) , rep("MAST" , 4),rep("LRT_mult" , 4))
+type <- rep(c("TP" , "FP" , "FN","TN") , 6)
+value1<-c(556,273,1592,18984,1671,5680,477,13577,1706,6337,442,12920,1731,8432,417,10825,
+          1683,5307,465,13950,1782,11530,366,7727)
+cf <- data.frame(method,type,value1)
+ggplot(cf, aes(fill=type, y=value1, x=as.factor(method))) + 
+  geom_text(aes(label=value1), position = position_dodge(width=1),
+            size=2,vjust = -0.5)+ geom_bar(position="dodge", stat="identity")+ 
+            xlab("Method")+ ylab("Confusion Matrix Values")+
+             ggtitle("Simulated Data Performance without log-fold changes (SplattDR_Stellate(a))")+ 
+              theme(plot.title = element_text(color="red", size=10, face="bold.italic"))
+```
+
+```{r}
+method <- c(rep("BF" , 4) , rep("Anova" , 4) , rep("KW" , 4),rep("Wilcox" , 4) ,
+            rep("MAST" , 4),rep("LRT_mult" , 4))
+type <- rep(c("TP" , "FP" , "FN","TN") , 6)
+value<-c(486,273,1662,18984,499,287,1649,18970,449,287,1649,18970,524,287,1624,18970,
+         64,195,2084,19062,499,287,1649,18970)
+cf <- data.frame(method,type,value)
+ggplot(cf, aes(fill=type, y=value, x=as.factor(method))) + 
+  geom_text(aes(label=value), position = position_dodge(width=1),
+            size=3,vjust = -0.5)+ geom_bar(position="dodge", stat="identity")+ 
+            xlab("Method")+ ylab("Confusion Matrix Values")+
+             ggtitle("Simulated Data Performance with log-fold changes (SplattDR_Stellate(a))")+ 
+              theme(plot.title = element_text(color="red", size=10, face="bold.italic"))
+```
+
+```{r}
+#Bayes factor calculations for dose dependent model
+##BF FDR control using jeffreys 
+library(mvQuad)
+bf_multiple_01<-rep(list(list()), nrow(data[["0"]]))
+source('~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/R/BayesFactorDD.R')
+
+  for(j in 1:nrow(data[["0"]]))
+  {
+    bf_multiple_01[[j]]<-BayesFactorDD(
+                           Y = list(Y_1=as.matrix(data[["0"]][j,]), 
+                           Y_2=as.matrix(data[["0.01"]][j,]),
+                           Y_3=as.matrix(data[["0.03"]][j,]),
+                           Y_4=as.matrix(data[["0.1"]][j,]),
+                           Y_5=as.matrix(data[["0.3"]][j,]),
+                           Y_6=as.matrix(data[["1"]][j,]),
+                           Y_7=as.matrix(data[["3"]][j,]),
+                           Y_8=as.matrix(data[["10"]][j,]),
+                           Y_9=as.matrix(data[["30"]][j,])),
+                           K=9,mu_m0= 1,mu_m1=1,tau_m0=1,tau_m1=1,
+                          mu_psi0=1,mu_psi1=1,sigma2_psi0=1,sigma2_psi1=1,
+                          levels_dose_level = levels(dose_level),
+                          b_sigma=1,a_sigma=6,
+                           prior_alt =0.1,
+                           prior_null =0.9)
+  }
+```
+
+
+

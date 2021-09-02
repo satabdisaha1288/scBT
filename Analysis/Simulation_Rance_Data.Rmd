@@ -1,0 +1,307 @@
+---
+title: "Differential gene expression analysis for dose dependent simulated data"
+output: html_notebook
+---
+
+Data Description: 
+
+simulated.data is simulated lognormcounts matrix having 2300 genes and 4500 cells. 
+simulated.cell.metadata is the cell metadata matrix having the dose level information for the 4500 cells. There are a total of 9 dose groups with 500 cells each.
+simulated.gene.metadata is the gene metadata matrix having 2300 rows and 4 columns, where the columns correspond to gene names,model: the model dose response curve that the gene follows and Direction: which states whether the gene is UpRegulated or DownRegulated.
+
+```{r}
+# simulated.data <- read.delim("~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/New_Simulations/simDataFinal.lognormcounts.txt")
+# rownames(simulated.data)<-simulated.data[,1]
+# simulated.data<-simulated.data[,-1]
+# simulated.cell.metadata <-read.delim("~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/New_Simulations/simCellMeta.txt")
+# simulated.gene.metadata <- read.delim("~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/New_Simulations/simGeneMeta.txt")
+# simulated.gene.metadata<-simulated.gene.metadata[,-1]
+```
+
+Data Description: 
+
+simulated.data is simulated lognormcounts matrix having 2500 genes and 4500 cells. 
+simulated.cell.metadata is the cell metadata matrix having the dose level information for the 4500 cells. There are a total of 9 dose groups with 500 cells each.
+simulated.gene.metadata is the gene metadata matrix having 2500 rows and 4 columns, where the columns correspond to gene names,model: the model dose response curve that the gene follows and Direction: which states whether the gene is UpRegulated or DownRegulated.
+
+```{r}
+simulated.data<-read.csv("~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/simulatedCorrectProportions/norm_sim_correctprop.txt", sep="")
+simulated.cell.metadata<-read.csv("~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/simulatedCorrectProportions/sim_correctprop_cellMeta.txt", sep="")
+simulated.gene.metadata<-read.csv("~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/simulatedCorrectProportions/sim_correctprop_geneMeta.txt", sep="")
+```
+
+```{r}
+library(data.table)
+library(ggplot2)
+simulated.data_df <-as.data.table(t(simulated.data))
+k0<-qplot(gene1, data = simulated.data_df[gene1  < 
+                    quantile(as.numeric(simulated.data_df$gene1), probs = .95)]) 
+simulated.data_df<- simulated.data_df[, gene1_pos := ifelse(gene1 > 0, gene1 , NA)]
+k1<-ggplot(simulated.data_df, aes(x = gene1_pos)) + 
+  geom_histogram(aes(y = ..density..), colour = "black", fill = "White") +
+  stat_function(fun = dnorm, args = MASS::fitdistr(simulated.data_df[gene1 > 0 ,gene1_pos ], "normal")$estimate)
+ggpubr::ggarrange(k0,k1,ncol=2,nrow=1) 
+
+```
+
+```{r}
+dose_level<-factor(simulated.cell.metadata$doses)
+simulated.data_dose<-data.frame(t(simulated.data),
+                                              simulated.cell.metadata[,"doses"])
+colnames(simulated.data_dose)[ncol(simulated.data_dose)]<-"Dose"
+```
+
+```{r}
+data<-rep(list(data.frame()), nlevels(dose_level))
+names(data)<-levels(dose_level)
+for(i in levels(dose_level))
+{
+data[[i]]<- subset(simulated.data_dose
+                   , Dose == i, select = gene1 : gene2300)
+##data[[i]] is a list of all the seperate dose gene*cell matrices
+data[[i]][] <- lapply(data[[i]], function(x) as.numeric(as.character(x)))
+data[[i]]<-t(data[[i]])
+}
+```
+
+```{r}
+# Identify the genes expressed in less than 5% of the cells over all the dose groups
+propor<-sapply(data,function(x) apply(x,1,function(x) length(which(x!=0))/length(x)))
+b<-which(apply(propor,1,function(x) all(x>0.05))== TRUE)
+#Filter out genes
+data<-lapply(data,function(x) apply(x,2,function(x) x[b]))
+simulated.gene.metadata<-as.data.frame(simulated.gene.metadata[b,])
+```
+
+
+Create data for applying LRT_multiple_groups
+```{r}
+data_short<-rep(list(data.frame()),length(data))
+data_ind<-lapply(data, function(x) ifelse(x>0,1,0))
+#data_ind_short<-lapply(data_ind, function(x) x[x!=0])
+data_short<-lapply(data, function(x) apply(x,1,function(x) x[x!=0]))
+gene_names<-vector()
+for(j in 1:nrow(data[["0"]]))
+{
+  gene_names[j]<-sprintf("gene%i",j)
+}
+out<-rep(list(list()),times=nrow(data[["0"]]))
+for(j in 1:nrow(data[["0"]]))
+{
+    xx<-noquote(sprintf("gene%i",j))
+    l1<-list(data_short[["0"]][j][[xx]],
+             data_short[["0.01"]][j][[xx]],data_short[["0.03"]][j][[xx]],
+                      data_short[["0.1"]][j][[xx]],
+                      data_short[["0.3"]][j][[xx]],data_short[["1"]][j][[xx]],
+                          data_short[["3"]][j][[xx]],data_short[["10"]][j][[xx]],
+                                  data_short[["30"]][j][[xx]])
+    l2<-list(data_ind[["0"]][j,],data_ind[["0.01"]][j,],
+                                  data_ind[["0.03"]][j,],data_ind[["0.1"]][j,],
+                                  data_ind[["0.3"]][j,],data_ind[["1"]][j,],
+                                  data_ind[["3"]][j,],data_ind[["10"]][j,],
+                                  data_ind[["30"]][j,])
+    out[[j]]<-LRT_multiple_groups(l1,l2)
+    
+}
+
+```
+
+
+Prior selection under alternative hypothesis
+
+```{r}
+library(matrixStats)
+m<-vector()
+sigma_mean<-vector()
+sigma_var<-vector()
+omega_mean<-vector()
+omega_var<-vector()
+for(i in  levels(dose_level))
+{
+  #Dose group specific mean of expression levels for all genes
+  m[i]<-mean(rowMeans(replace(data[[i]], data[[i]] == 0, NA), na.rm = TRUE),na.rm = TRUE)
+  #Dose group specific SD's for all genes
+  sigma_mean[i]<-mean(rowVars(replace(as.matrix(data[[i]]),as.matrix(data[[i]]) == 0, NA), na.rm = TRUE),na.rm = TRUE)
+  sigma_var[i]<-var(rowVars(replace(as.matrix(data[[i]]),as.matrix(data[[i]]) == 0, NA), na.rm = TRUE),na.rm = TRUE)
+  #Dose group specific mean dropout proportions for all genes
+  omega_mean[i]<-mean(apply(data[[i]],1,function(x) length(which(x==0))/length(x)))
+  omega_var[i]<-var(apply(data[[i]],1,function(x) length(which(x==0))/length(x)))
+}
+#Choose the scaling constant tau_mu
+tau_t_mu = tau_c_mu = tau_mu = c(0.5,1,2,3)
+tau_k_mu<-rep(1,9)
+#Use sigma_mean and sigma_var to solve for b_sigma and a_sigma
+b_sigma = 1
+a_sigma = 6
+#Use mean and variance of omega to solve for a_w and b_w
+#We keep the same values of a_w and b_w for all groups since the omega mean and omega SD values are more or less consistent.
+a_w = a_t_w = 0.8 #t refers to the treatment groups
+b_w = b_t_w = 0.2
+#length(which(simulated.gene.metadata$Category == "Positive"))
+prior_Alter<-c(1-((0.78)^(1/1800)),0.01,0.05,0.1, 0.2,0.3,0.4,0.5)
+prior_Null<- 1-prior_Alter
+```
+
+
+```{r}
+#actual bayes factor computed in overleaf
+##BF FDR control using jeffreys 
+a<-rep(list(list()),nrow(data[["0"]]))
+bf_actual_01<-rep(list(a), nlevels(dose_level)-1)
+names(bf_actual_01)<-levels(dose_level)[-1]
+source("Bayes_factor.R")
+for (i in levels(dose_level)[-1])
+{
+  for(j in 1:nrow(data[["0"]]))
+  {
+    bf_actual_01[[i]][[j]]<-Bayes_factor(Y_t=as.matrix(data[[i]][j,]),
+                           Y_c=as.matrix(data[["0"]][j,]),m_t0,m_c0,m_0,
+                           tau_t_mu,tau_c_mu, tau_mu=tau_mu[2], 
+                           b_sigma,a_sigma,a_w,a_c_w,a_t_w,b_w,b_t_w,b_c_w,
+                           prior_alt = prior_Alter[1],
+                           prior_null = prior_Null[1])
+  }
+}
+```
+
+
+```{r}
+#actual bayes factor multiple computed in overleaf
+##BF FDR control using jeffreys 
+bf_multiple_01<-rep(list(list()), nrow(data[["0"]]))
+source('~/Documents/Documents/Summer_2019/Mouse_Liver/Rance/snSeq-DGE/R/BayesFactorMultiple.R')
+
+  for(j in 1:nrow(data[["0"]]))
+  {
+    bf_multiple_01[[j]]<-Bayes_factor_multiple(
+                           Y = list(Y_1=as.matrix(data[["0"]][j,]), 
+                           Y_2=as.matrix(data[["0.01"]][j,]),
+                           Y_3=as.matrix(data[["0.03"]][j,]),
+                           Y_4=as.matrix(data[["0.1"]][j,]),
+                           Y_5=as.matrix(data[["0.3"]][j,]),
+                           Y_6=as.matrix(data[["1"]][j,]),
+                           Y_7=as.matrix(data[["3"]][j,]),
+                           Y_8=as.matrix(data[["10"]][j,]),
+                           Y_9=as.matrix(data[["30"]][j,])),
+                           m_0=mean(m),m=m,K=9,
+                           tau_k_mu =tau_k_mu,tau_mu=tau_mu[2], 
+                           b_sigma=1,a_sigma=6,a_w=8,b_w=2,
+                           prior_alt =prior_Alter[8],
+                           prior_null = prior_Null[8])
+  }
+
+```
+
+
+```{r}
+#Decision for all group differential expression
+l_bf_multiple_01<-vector(mode = "numeric", length = nrow(data[["0"]]))
+exp_bf_multiple_01<-vector(mode = "numeric", length = nrow(data[["0"]]))
+Decision_bf_multiple_01<-vector(mode = "numeric", length = nrow(data[["0"]]))
+Decision_bf_multiple_01_new<-vector(mode = "numeric", length = nrow(data[["0"]]))
+for (j in 1: length(bf_multiple_01))
+{
+  l_bf_multiple_01[j]<-bf_multiple_01[[j]]$l_Bayes_factor_01
+  exp_bf_multiple_01[j]<-exp(l_bf_multiple_01[j])
+  Decision_bf_multiple_01[j]<- ifelse(exp_bf_multiple_01[j] > 1, "Fail to Reject H_0",ifelse( exp_bf_multiple_01[j] <= 1 & exp_bf_multiple_01[j] > (1/3), "Weak evidence against H_0",ifelse(exp_bf_multiple_01[j] <= (1/3) & exp_bf_multiple_01[j] > (1/10), "Moderate evidence against H_0", ifelse(exp_bf_multiple_01[j] <= (1/10) & exp_bf_multiple_01[j] > (1/30), "Substantial evidence against H_0",ifelse(exp_bf_multiple_01[j]<= (1/30) & exp_bf_multiple_01[j]> (1/100), " Strong evidence against H_0", ifelse(exp_bf_multiple_01[j] <= (1/100) & exp_bf_multiple_01[j] > (1/300), "Very strong evidence against H_0", "Decisive evidence against H_0"))))))
+  Decision_bf_multiple_01_new[j]<-ifelse(Decision_bf_multiple_01[j] == "Fail to Reject H_0" | Decision_bf_multiple_01[j] == "Weak evidence against H_0", "Negative", "Positive")
+}
+Decision_bf_multiple_01_new<-
+    factor(Decision_bf_multiple_01_new,levels = c("Positive","Negative"))
+True_decision<-ifelse(simulated.gene.metadata$Direction=="Downregulated" | simulated.gene.metadata$Direction == "Upregulated","Positive","Negative")
+True_decision<-factor(True_decision, levels = c("Positive","Negative"))
+c<-data.frame(exp_bf_multiple_01,Decision_bf_multiple_01_new,
+                     True_decision)
+colnames(c)<-c("BF_Test_Statistic","Pred_Decision","True_Decision")
+rownames(c)<-rownames(data[["0"]])
+confusionMatrix_bf_multiple_01<-caret::confusionMatrix(c$Pred_Decision,
+         c$True_Decision)
+confusionMatrix_bf_multiple_01
+
+#Look at the test-statistic values of those genes which are classified as false negative
+FN<-c$BF_Test_Statistic[which(c$True_Decision=="Positive" & c$Pred_Decision == "Negative")]
+ind<-rownames(c)[which(c$True_Decision=="Positive" & c$Pred_Decision == "Negative")]
+c[ind,]
+```
+
+
+```{r}
+df<-data.frame(categories<-c("FN","FP","TN","TP"),
+               values = c(109,0,1757,460))
+ggplot(df, aes(y=values, x= categories)) + geom_bar(stat = "identity",fill = "steelblue")+ geom_text(aes(label=values),size=3,vjust = -0.5)+
+            xlab("Errors")+ ylab("Values")+
+             ggtitle("tau_mu = 1, P(H_a)= 0.002")+ 
+              theme(plot.title = element_text(color="red", size=10, face="bold.italic"))
+
+```
+
+
+```{r}
+#Decisions for two group differential expression
+l_bf_act_01<-rep(list(vector(mode = "numeric",
+                             length = nrow(data[["0"]]))), nlevels(dose_level)-1)
+bf_act_01<-rep(list(vector(mode = "numeric",
+                             length = nrow(data[["0"]]))), nlevels(dose_level)-1)
+Decision_bf_act_01<- rep(list(vector(mode = "numeric",
+                             length = nrow(data[["0"]]))), nlevels(dose_level)-1)
+Decision_bf_act_01_new<- rep(list(vector(mode = "numeric",
+                             length = nrow(data[["0"]]))), nlevels(dose_level)-1)
+
+names(l_bf_act_01)<-levels(dose_level)[-1]
+names(bf_act_01)<-levels(dose_level)[-1]
+names(Decision_bf_act_01)<-levels(dose_level)[-1]
+names(Decision_bf_act_01_new)<-levels(dose_level)[-1]
+
+for (i in levels(dose_level)[-1])
+{
+  for(k in 1: nrow(data[["0"]]))
+  {
+  l_bf_act_01[[i]][k]<-bf_actual_01[[i]][[k]]$l_Bayes_factor_01
+  }
+  bf_act_01[[i]]<-exp(l_bf_act_01[[i]])
+  Decision_bf_act_01[[i]]<-ifelse(bf_act_01[[i]] > 1, "Fail to Reject H_0",ifelse( bf_act_01[[i]] <= 1 & bf_act_01 [[i]] > (1/3), "Weak evidence against H_0",ifelse(bf_act_01[[i]] <= (1/3) & bf_act_01[[i]] > (1/10), "Moderate evidence against H_0", ifelse(bf_act_01[[i]] <= (1/10) & bf_act_01[[i]] > (1/30), "Substantial evidence against H_0",ifelse(bf_act_01 [[i]]<= (1/30) & bf_act_01 [[i]] > (1/100), " Strong evidence against H_0", ifelse(bf_act_01 [[i]] <= (1/100) & bf_act_01 [[i]] > (1/300), "Very strong evidence against H_0", "Decisive evidence against H_0")))))) 
+Decision_bf_act_01_new[[i]]<-ifelse(Decision_bf_act_01[[i]] == "Fail to Reject H_0" | Decision_bf_act_01[[i]] == "Weak evidence against H_0", "Negative", "Positive")
+Decision_bf_act_01_new[[i]] <-
+                          factor(Decision_bf_act_01_new[[i]],levels = c("Positive","Negative"))
+
+}
+True_decision<-simulated.gene.metadata$Category
+c<-rep(list(data.frame()),nlevels(dose_level)-1)
+names(c)<-levels(dose_level)[-1]
+confusionMatrix_bf_act_01<-rep(list(list()),nlevels(dose_level)-1)
+names(confusionMatrix_bf_act_01)<-levels(dose_level)[-1]
+for(i in levels(dose_level)[-1])
+{
+  c[[i]]<-data.frame(bf_act_01[[i]],Decision_bf_act_01_new[[i]],
+                     True_decision)
+  confusionMatrix_bf_act_01[[i]]<-caret::confusionMatrix(c[[i]]$Decision_bf_act_01_new..i..,
+                                    factor(c[[i]]$True_decision, 
+                                           levels = c("Positive","Negative")))
+  colnames(c[[i]])<-c("BF_Test_Statistic","Pred Decision","True Decision")
+  rownames(c[[i]])<-rownames(data[["0"]])
+}
+#Save the list as a csv file
+#lapply(c, function(x) write.table( data.frame(x), 'test.csv'  , append= T, sep=',' ))
+#capture.output(c, file = "clust_1_short_filtered_results.txt")
+#capture.output(confusionMatrix_bf_act_01, file = "clust_1_short_filtered_results_confusionMatrix.txt")
+save(c, file="simulated_data_results.Rdata")
+confusionMatrix_bf_act_01
+```
+
+```{r}
+# library
+#Confusion Matrix Plot
+library(ggplot2)
+# create a dataset
+dose <- c(rep(0.01 , 4) , rep(0.03 , 4) , rep(0.1 , 4) , rep(0.3 , 4) , rep(1 , 4),rep(3 , 4) ,
+            rep(10 , 4),rep(30 , 4)  )
+type <- rep(c("TP" , "FP" , "FN","TN") , 8)
+value<-c(31,0,538,1757,43,0,526,1757,50,0,519,1757,66,0,503,1757,96,0,473,1757,312,0,257,1757,
+         159,0,410,1757,530,0,39,1757)
+cf <- data.frame(dose,type,value)
+```
+
+```{r}
+
+```
+
