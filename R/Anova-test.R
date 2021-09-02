@@ -1,7 +1,7 @@
 #' Performs a genewise ANOVA test on a SingleCellExperiment object
 #'
 #' @param sce SingleCellExperiment object with a logcounts assay
-#' and Dose column in the cell metadata
+#' and "Dose" factor column in the cell metadata
 #'
 #' @return a vector of p values from the ANOVA test
 #'
@@ -16,10 +16,10 @@ batchANOVA <- function(sce){
   return(aov.out)
 }
 
-#' Performs a ANOVA test on a logcounts vector for a given dose
+#' Performs a ANOVA test on a log normalized vector for a given dose
 #'
-#' @param data The logcounts vector
-#' @param dose The dose to analyze
+#' @param data The log normalized counts vector
+#' @param dose The dose vector of the same length as data
 #'
 #' @return A p value from the ANOVA test
 #'
