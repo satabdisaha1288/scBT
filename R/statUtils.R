@@ -112,3 +112,127 @@ runMASTDR <- function(sce){
   colnames(mast.out) <- paste0(colnames(mast.out), levels(Dose)[-1])
   return(mast.out)
 }
+
+#' Calculate concordance AUC Refer to: Soneson, Charlotte, and Mark D. Robinson.
+#' "Bias, robustness and scalability in single-cell differential
+#' expression analysis." Nature methods 15, no. 4 (2018): 255.
+#'
+#' @param DETestoutput
+#' @author Satabdi Saha
+#' @return Normed area under the concordance curve.
+#' @export
+#'
+#' @examples
+calculate_concordance_AUC<-function(DETestoutput)
+{
+  kw.data<-DETestoutput$KW
+  kw.sort<-kw.data[order( kw.data[,1] ),,drop=FALSE]
+  aov.data<-DETestoutput$ANOVA
+  aov.sort<-aov.data[order( aov.data[,1] ),,drop=FALSE]
+  h<-seq(1,100,1)
+  common_dge<-vector(length = length(h))
+  for(i in 1:length(h))
+  {
+    common_dge[i]<-length(intersect(rownames(kw.sort)[1:h[i]],
+                                    rownames(aov.sort)[1:h[i]]))
+  }
+  library(zoo)
+  id <- order(h)
+  AUC <- sum(diff(h[id])*rollmean(common_dge[id],2))
+  AUC_norm<-AUC/(h[length(h)]^2 /2)
+  return(AUC_norm)
+}
+
+#' Title Computes ROC curve for DEG classification
+#'
+#' @param sim
+#' @param DETestoutput
+#' @author Satabdi Saha
+#' @return ROC plot
+#' @export
+#'
+#' @examples
+compute_ROC_curve<-function(sim,DETestoutput){
+  require(PRROC)
+  true_model<-rowData(sim)[,"Model"]
+  true_model<-ifelse(true_model== "Unchanged",0,1)
+  wfg<- c(runif(300,min=0.5,max=1),runif(500,min=0,max=0.5))
+  fg <- DETestoutput$KW$kw.pvalues[true_model == 1]
+  bg <- DETestoutput$KW$kw.pvalues[true_model == 0]
+  x_KW<-c(fg,bg)
+  lab<-c(rep(1,length(fg)),rep(0,length(bg)))
+  x_aov<-c(DETestoutput$ANOVA$aov.pvalues[true_model == 1],
+           DETestoutput$ANOVA$aov.pvalues[true_model == 0])
+  #ROC Curve
+  wroc_KW<-roc.curve(scores.class0 = x_KW, weights.class0 = lab, curve = TRUE,
+                     max.compute = T, min.compute = T, rand.compute = T)
+  wroc_aov<-roc.curve(scores.class0 = x_aov, weights.class0 = lab, curve = TRUE,
+                      max.compute = T, min.compute = T, rand.compute = T)
+  wroc_plot<-plot(wroc_KW,max.plot = TRUE, min.plot = TRUE,
+                  rand.plot = TRUE, fill.area = TRUE,color = 2,
+                  scale.color = heat.colors(100))
+  wroc_plot<-plot(wroc_aov, add = TRUE, color = 3);
+  return(c(wroc_KW,wroc_aov,wroc_plot))
+}
+
+#' Summarises data by groups
+#' 
+#' @param data a data object
+#' 
+#' @return INSERT DESCRIPTION
+#' 
+#' @export
+data_group_summary <- function(data){
+  my_data_summary <- rep(list(data.frame()),ncol(data)-1)
+  #Look at summary statistics for each gene by group
+  for(i in 1: (ncol(data)-1))
+  {
+    my_data <- data.frame(data[,i],as.factor(data[,ncol(data)]))
+    colnames(my_data) <- c("value","dose")
+    library(dplyr)
+    my_data_summary[[i]] <- group_by(my_data, dose) %>%
+      summarise(
+        count <- n(),
+        mean <- mean(value, na.rm = TRUE),
+        mean_pos <- mean(value[value>0], na.rm = TRUE),
+        quantile_25 <- quantile(value,probs=0.25,na.rm=TRUE),
+        quantile_50 <- quantile(value,probs=0.50,na.rm=TRUE),
+        quantile_75 <- quantile(value,probs=0.75,na.rm=TRUE),
+        sd <- sd(value, na.rm = TRUE),
+        drop_prop <- length(which(value == 0))/ length(value),
+      )
+  }
+  return(my_data_summary)
+}
+
+#' Title Computes PR curve for DEG classification
+#'
+#' @param sim
+#' @param DETestoutput
+#' @author Satabdi Saha
+#' @return PR plot
+#' @export
+#'
+#' @examples
+compute_PR_curve<-function(sim,DETestoutput){
+  require(PRROC)
+  true_model<-rowData(sim)[,"Model"]
+  true_model<-ifelse(true_model== "Unchanged",0,1)
+  fg <- DETestoutput$KW$kw.pvalues[true_model == 1]
+  bg <- DETestoutput$KW$kw.pvalues[true_model == 0]
+  x_KW<-c(fg,bg)
+  lab<-c(rep(1,length(fg)),rep(0,length(bg)))
+  x_aov<-c(DETestoutput$ANOVA$aov.pvalues[true_model == 1],
+           DETestoutput$ANOVA$aov.pvalues[true_model == 0])
+  #ROC Curve
+  wPR_KW<-pr.curve(scores.class0 = x_KW, weights.class0 = lab, curve = TRUE,
+                   max.compute = T, min.compute = T, rand.compute = T)
+  wPR_aov<-pr.curve(scores.class0 = x_aov, weights.class0 = lab, curve = TRUE,
+                    max.compute = T, min.compute = T, rand.compute = T)
+  wPR_plot<-plot(wPR_KW,max.plot = TRUE, min.plot = TRUE,
+                 rand.plot = TRUE, fill.area = TRUE,color = 2,
+                 scale.color = heat.colors(100))
+  wPR_plot<-plot(wPR_aov, add = TRUE, color = 3);
+  return(c(wPR_KW,wPR_aov,wPR_plot))
+}
+
