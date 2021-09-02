@@ -67,6 +67,7 @@ nGenes
 Bayes differential expression test - basic overview of the test and demonstrate. Define what the priors contain and explain the individual elements
 ```{r}
 # Calculate Bayes prior hyperparameters
+#
 priors = sceCalcPriors(sim)
 ```
 
