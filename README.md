@@ -29,7 +29,7 @@ scBT is an R package for differential gene expression (DGE) analysis in multiple
 * MAST (Regression model based test of DGE for zero inflated continuous data with Bayesian estimation)
 
 ## Installation
-The development version of scBT can be installed from Github:
+The developmental version of scBT can be installed from Github:
 
 ```
 
