@@ -34,9 +34,10 @@ The development version of SplattDR can be installed from Github:
 ## Getting Started
 Once installed the best place to get started is the vignette. The Quickstart vignette can be accessed as:
 
-> library(scBT)
+```
+library(scBT)
 browseVignettes("sCBT")
-... 
+```
 
 ## Citing scBT
 If you use scBT please cite our paper
