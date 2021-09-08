@@ -16,7 +16,7 @@ _dose-response models derived from [BMD Express](https://bmdexpress-2.readthedoc
 * Linear
 * Polynomial 2-4
 
-## Bayesian testing
+## DGE testing
 scBT is an R package for differential gene expression (DGE) analysis in multiple group study designs for single-cell RNA sequencing data. scBT contains a new Bayesian test of the same name designed along with 9 other benchmarking algorithms frequently used for the DGE analysis in multiple group experimental designs. The tests present in scBT are:
 
 * Seurat Bimod ( Two sample test of mean for zero inflated continuous data)
@@ -28,3 +28,9 @@ scBT is an R package for differential gene expression (DGE) analysis in multiple
 * LRT-Linear( Regression model based test of DGE for zero inflated continuous data)
 * MAST (Regression model based test of DGE for zero inflated continuous data with Bayesian estimation)
 
+## Installation
+The development version of SplattDR can be installed from Github:
+## Getting Started
+
+## Citing scBT
+If you use Splatter please cite our paper
