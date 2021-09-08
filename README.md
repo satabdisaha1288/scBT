@@ -32,9 +32,11 @@ scBT is an R package for differential gene expression (DGE) analysis in multiple
 The development version of SplattDR can be installed from Github:
 
 ## Getting Started
-> This is a blockquote
+Once installed the best place to get started is the vignette. The Quickstart vignette can be accessed as:
 
-...and after a blockquote. 
+> library(scBT)
+browseVignettes("sCBT")
+... 
 
 ## Citing scBT
 If you use scBT please cite our paper
