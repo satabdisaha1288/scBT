@@ -29,7 +29,11 @@ scBT is an R package for differential gene expression (DGE) analysis in multiple
 * MAST (Regression model based test of DGE for zero inflated continuous data with Bayesian estimation)
 
 ## Installation
-The development version of SplattDR can be installed from Github:
+The development version of scBT can be installed from Github:
+
+```
+
+```
 
 ## Getting Started
 Once installed the best place to get started is the vignette. The Quickstart vignette can be accessed as:
