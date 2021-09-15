@@ -2,20 +2,6 @@
 This package implements a new Bayesian test for detecting differential gene expression over multiple dose groups in single cell gene 
 expression studies. 
 
-## Simulating dose-response data
-In order to develop new testing methods for differential expression analysis we need data for which the ground truth is known.
-Here we simulate dose-response data based on known dose-response models and using parameters derived from real data.
-
-![simulation](/Analysis/SimulationWorkflow.png)
-
-_dose-response models derived from [BMD Express](https://bmdexpress-2.readthedocs.io/en/feature-readthedocs/) and the [US EPA BMDS Documentation](https://www.epa.gov/bmds/benchmark-dose-software-bmds-version-27-user-manual)_
-
-* Hill
-* Exponential 2 - 5
-* Power
-* Linear
-* Polynomial 2-4
-
 ## DGE testing
 scBT is an R package for differential gene expression (DGE) analysis in multiple group study designs for single-cell RNA sequencing data. scBT contains a new Bayesian test of the same name designed along with 9 other benchmarking algorithms frequently used for the DGE analysis in multiple group experimental designs. The tests present in scBT are:
 
@@ -30,9 +16,9 @@ scBT is an R package for differential gene expression (DGE) analysis in multiple
 
 ## Installation
 The developmental version of scBT can be installed from Github:
-
-```
-
+```{r}
+library("devtools")
+devtools::install_github("zacharewskilab/splattdr")
 ```
 
 ## Getting Started
@@ -40,8 +26,23 @@ Once installed the best place to get started is the vignette. The Quickstart vig
 
 ```
 library(scBT)
-browseVignettes("sCBT")
+DETest(sce, method = 'BAYES')
 ```
 
 ## Citing scBT
-If you use scBT please cite our paper
+Please cite ["Nault, R., Saha, S., Bhattacharya, S., Dodson, J., Sinha, S., Maiti, T. and Zacharewski, T. (2021). Benchmarking of a Bayesian single cell RNAseq differential gene expression test for dose-response study designs. bioRxiv; doi.org/10.1101/2021.09.08.459475"][paper]
+
+```
+@article{,
+   author = {Nault, Rance and Saha, Satabdi and Bhattacharya, Sudin and Dodson, Jack and Sinha, Samiran and Maiti, Tapabrata and Zacharewski, Tim},
+   title = {Benchmarking of a Bayesian single cell RNAseq differential gene expression test for dose-response study designs},
+   journal = {bioRxiv},
+   pages = {2021.09.08.459475},
+   DOI = {10.1101/2021.09.08.459475},
+   url = {http://biorxiv.org/content/early/2021/09/10/2021.09.08.459475.abstract},
+   year = {2021},
+   type = {Journal Article}
+}
+```
+
+[paper]: https://www.biorxiv.org/content/10.1101/2021.09.08.459475v1.full
