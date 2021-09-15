@@ -18,7 +18,7 @@ scBT is an R package for differential gene expression (DGE) analysis in multiple
 The developmental version of scBT can be installed from Github:
 ```{r}
 library("devtools")
-devtools::install_github("zacharewskilab/scBT")
+devtools::install_github("satabdisaha1288/scBT")
 ```
 
 ## Getting Started
