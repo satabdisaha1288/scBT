@@ -43,19 +43,19 @@ DETest(sce, method = 'BAYES')
 ```
 
 ## Citing scBT
-Please cite ["Nault, R., Saha, S., Bhattacharya, S., Dodson, J., Sinha, S., Maiti, T. and Zacharewski, T. (2021). Benchmarking of a Bayesian single cell RNAseq differential gene expression test for dose-response study designs. bioRxiv; doi.org/10.1101/2021.09.08.459475"][paper]
+Please cite ["Nault, R., Saha, S., Bhattacharya, S., Dodson, J., Sinha, S., Maiti, T. and Zacharewski, T., 2022. Benchmarking of a Bayesian single cell RNAseq differential gene expression test for dose–response study designs. Nucleic acids research, 50(8), pp.e48-e48."][paper]
 
 ```
-@article{,
-   author = {Nault, Rance and Saha, Satabdi and Bhattacharya, Sudin and Dodson, Jack and Sinha, Samiran and Maiti, Tapabrata and Zacharewski, Tim},
-   title = {Benchmarking of a Bayesian single cell RNAseq differential gene expression test for dose-response study designs},
-   journal = {bioRxiv},
-   pages = {2021.09.08.459475},
-   DOI = {10.1101/2021.09.08.459475},
-   url = {http://biorxiv.org/content/early/2021/09/10/2021.09.08.459475.abstract},
-   year = {2021},
-   type = {Journal Article}
+@article{nault2022benchmarking,
+  title={Benchmarking of a Bayesian single cell RNAseq differential gene expression test for dose--response study designs},
+  author={Nault, Rance and Saha, Satabdi and Bhattacharya, Sudin and Dodson, Jack and Sinha, Samiran and Maiti, Tapabrata and Zacharewski, Tim},
+  journal={Nucleic acids research},
+  volume={50},
+  number={8},
+  pages={e48--e48},
+  year={2022},
+  publisher={Oxford University Press}
 }
 ```
 
-[paper]: https://www.biorxiv.org/content/10.1101/2021.09.08.459475v1.full
+[paper]: https://academic.oup.com/nar/article/50/8/e48/6513570
